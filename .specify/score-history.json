@@ -1,0 +1,14 @@
+{
+  "001-workflow-script-harness": [
+    {
+      "timestamp": "2026-09-09T19:40:00Z",
+      "score": 90,
+      "coverage_pct": 89,
+      "critical": 0,
+      "high": 2,
+      "medium": 0,
+      "low": 0,
+      "total_findings": 2
+    }
+  ]
+}
