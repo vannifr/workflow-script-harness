@@ -43,7 +43,7 @@ under "Original Content Quality Gates".
   to name the specific problem such that the cause is inferable without
   reading harness source; FR-012/FR-013 add the harness-vs-script
   distinction as a checkable property.
-- [ ] CHK007 [Ambiguity] Is "een reeks opeenvolgende waarden" (an ordered
+- [x] CHK007 [Ambiguity, resolved as non-blocking] Is "een reeks opeenvolgende waarden" (an ordered
   sequence of values) for `budget.spent()` explicit about what happens on
   the FIRST call before any value has been "consumed" — i.e., is the
   sequence 0-indexed from the first call, with no special-cased initial
@@ -162,7 +162,7 @@ under "Original Content Quality Gates".
 ## Summary
 
 - **Total items**: 17 (CHK001-CHK017) + 16 original gate items
-- **Checked**: 33 of 33
+- **Checked**: 33 of 33 (100%)
 - **Deferred**: 0 (CHK007 resolved as a non-blocking documentation note,
   not deferred — see item for reasoning)
 - **Gaps found and resolved**: 2 — FR-013 added (unsupported DSL function
