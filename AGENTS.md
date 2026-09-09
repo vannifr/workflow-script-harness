@@ -8,10 +8,14 @@ the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 
 - **Test-First (NON-NEGOTIABLE)**: write a failing test before any
   production code; red-green-refactor.
-- **Dependency Minimalism**: use ONLY the language's built-in testing
-  facilities — no third-party test framework. No runtime dependency may be
-  added unless strictly necessary, and any addition must be explicitly
-  justified in the plan/design output before being introduced.
+- **Dependency Minimalism** (v2.0.0): use ONLY the language's built-in
+  testing facilities — no third-party test framework — **except**
+  `@cucumber/cucumber`, permitted solely to execute the hash-locked
+  `.feature` files from `/iikit-04-testify`. Assertions still use
+  `node:assert` even inside Cucumber step definitions. No other runtime
+  dependency may be added unless strictly necessary, and any addition must
+  be explicitly justified in the plan/design output before being
+  introduced.
 - **Faithful Sandbox Fidelity**: the mock runtime must actively block what
   the real sandbox denies (host access, non-deterministic primitives) — not
   merely omit them.

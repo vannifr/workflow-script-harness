@@ -1,9 +1,16 @@
 <!--
 Sync Impact Report
-- Version change: (none) -> 1.0.0
-- Modified principles: n/a (initial ratification)
-- Added sections: Core Principles (I-V), Integrity, Governance
+- Version change: 1.0.0 -> 2.0.0
+- Modified principles: II. Dependency Minimalism — redefined to carve out
+  one explicit, named exception (a single BDD/Gherkin runner) for executing
+  hash-locked acceptance scenarios produced by /iikit-04-testify; the
+  blanket "no third-party test framework" rule otherwise stands unchanged
+- Added sections: none
 - Removed sections: none
+- Approved by: user, in-session, 2026-09-09 (explicit choice: "Constitution
+  amenderen voor één BDD-runner-dependency", resolving the conflict between
+  this constitution's dependency ban and /iikit-04-testify's expectation of
+  a BDD-runner dependency per phase-discipline.md)
 - Templates requiring updates: plan-template.md (✅ consistent),
   spec-template.md (✅ consistent), tasks-template.md (✅ consistent)
 - Follow-up TODOs: none
@@ -27,14 +34,26 @@ its own defects go undetected.
 ### II. Dependency Minimalism
 
 The project MUST rely exclusively on the language's built-in testing
-facilities — no third-party test framework may be introduced. No runtime
-dependency may be added unless strictly necessary, and any addition MUST be
-explicitly justified (what it replaces, why the standard library is
-insufficient) at planning time, before it is introduced.
+facilities — no third-party test framework may be introduced — **with
+exactly one named exception**: a single BDD/Gherkin runner (`@cucumber/cucumber`)
+MAY be used, solely to execute the hash-locked `.feature` acceptance
+scenarios produced by `/iikit-04-testify`. No other third-party test
+framework, assertion library, or mocking library may be introduced under
+this exception. Outside of that one scenario-execution role, all
+assertions MUST still use `node:assert`, and all non-BDD tests MUST still
+use `node:test`. No other runtime dependency may be added unless strictly
+necessary, and any addition MUST be explicitly justified (what it
+replaces, why the standard library is insufficient) at planning time,
+before it is introduced.
 
 **Rationale**: a test harness that itself carries a heavy or fragile
 dependency tree undermines the trust callers place in it, and adds
-maintenance surface disproportionate to the project's scope.
+maintenance surface disproportionate to the project's scope. The one named
+exception exists because Gherkin `.feature` files require a BDD runner to
+execute step definitions — there is no built-in Node.js equivalent — and
+this project's own testify workflow produces such files as hash-locked
+acceptance criteria; without this exception those files could never be
+executed, only read.
 
 ### III. Faithful Sandbox Fidelity
 
@@ -113,4 +132,4 @@ Amendments require: a documented rationale, an explicit version bump
 PATCH for wording clarifications), and explicit user approval — this
 constitution MUST NOT be amended unilaterally.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-09 | **Last Amended**: 2026-09-09
+**Version**: 2.0.0 | **Ratified**: 2026-09-09 | **Last Amended**: 2026-09-09
