@@ -113,27 +113,27 @@ error.
 **Independent Test**: `npx cucumber-js --tags "@US-001"` passes once this
 phase is done.
 
-- [ ] T013 [US1] Write `node:test` unit test: a script calling
+- [x] T013 [US1] Write `node:test` unit test: a script calling
   `agent('...', {label:'x'})` with a scripted response for label `x`
   returns that response as the script's exported value (TS-001; must fail)
-- [ ] T014 [US1] Implement the `agent()` DSL primitive (single scripted
+- [x] T014 [US1] Implement the `agent()` DSL primitive (single scripted
   response, no exhaustion/null handling yet) in `src/harness.js`, enough
   to make T013 pass
-- [ ] T015 [US1] Write `node:test` unit test: the exact same script text
+- [x] T015 [US1] Write `node:test` unit test: the exact same script text
   object (`this.script`) produces a non-error result across two separate
   `runWorkflowScript()` calls with equivalent options — i.e. nothing
   about the script itself needs to change (TS-002; must fail if T014 has
   any script-mutation side effect)
-- [ ] T016 [US1] Audit `src/harness.js` to confirm the script text is
+- [x] T016 [US1] Audit `src/harness.js` to confirm the script text is
   never mutated in place (only a local copy is transformed for
   execution) and fix if T015 fails
-- [ ] T017 [US1] Write `node:test` unit test: calling a function not in
+- [x] T017 [US1] Write `node:test` unit test: calling a function not in
   the DSL allowlist (e.g. `unsupportedFunction()`) produces a
   `HarnessError` naming the function (TS-003, FR-013; must fail)
-- [ ] T018 [US1] Implement unknown-DSL-function detection (distinct from
+- [x] T018 [US1] Implement unknown-DSL-function detection (distinct from
   the forbidden-primitive path in T006) in `src/harness.js`, enough to
   make T017 pass
-- [ ] T019 [US1] Run `npx cucumber-js --tags "@US-001"` (covers
+- [x] T019 [US1] Run `npx cucumber-js --tags "@US-001"` (covers
   [TS-001, TS-002, TS-003]) and fix any gap the unit tests above missed
 
 **Checkpoint**: User Story 1 fully functional and independently testable.

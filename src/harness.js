@@ -29,14 +29,45 @@ class HarnessError extends Error {
   }
 }
 
+// Errors thrown INSIDE the sandboxed script (TypeError from a bad property
+// access, ReferenceError, etc.) are constructed using the VM CONTEXT'S OWN
+// Error/TypeError intrinsics — not the host's. Because `buildSandboxContext`
+// wraps the context's global object in a restrictive Proxy, that Proxy's
+// `get` trap is also consulted when V8 LAZILY computes such an error's
+// `.stack` string (stack formatting needs to resolve helpers from the
+// realm the error belongs to) — and since `Error`/other formatting
+// internals are not in our DSL allowlist, reading `.stack` on a raw
+// vm-thrown error can itself throw and CRASH THE PROCESS (uncaught),
+// reproducibly, for the most ordinary script bugs (confirmed empirically:
+// `undefined.someProperty` inside the sandbox). `heal-and-cache` the stack
+// immediately after catching, before anyone — including our own code —
+// touches `.stack` again.
+function healOriginalErrorStack(originalError) {
+  try {
+    void originalError.stack; // force lazy computation now, inside a try
+    return originalError.stack;
+  } catch (_stackComputationFailed) {
+    const safeStack = String(originalError);
+    try {
+      Object.defineProperty(originalError, 'stack', {
+        value: safeStack,
+        configurable: true,
+        writable: true
+      });
+    } catch (_cannotRedefine) {
+      // Best effort — even if we can't neutralize the dangerous getter on
+      // the original object, we still return a safe string for our own use.
+    }
+    return safeStack;
+  }
+}
+
 class ScriptError extends Error {
   constructor(message, originalError) {
     super(message);
     this.name = 'ScriptError';
     this.originalError = originalError;
-    if (originalError && originalError.stack) {
-      this.stack = originalError.stack;
-    }
+    this.stack = healOriginalErrorStack(originalError);
   }
 }
 
@@ -96,16 +127,40 @@ function parseMeta(scriptText) {
 }
 
 // A Proxy-based allowlist: the sandboxed script can only ever see the
-// globals explicitly present in `dslPrimitives`. Everything else throws
-// HarnessError(UNKNOWN_GLOBAL) — accessing an absent global returns
-// `undefined` by default, which produces confusing downstream errors;
-// throwing immediately, with the offending name, is the whole point of
-// CONSTITUTION.md Principle III (actively block, don't just omit).
+// globals explicitly present in `dslPrimitives`. Everything else is meant
+// to throw HarnessError(UNKNOWN_GLOBAL) per CONSTITUTION.md Principle III
+// (actively block, don't just omit).
 //
 // `has` must unconditionally return true: if it returned false, V8 would
 // treat the identifier as an unresolvable reference and raise its own
-// native ReferenceError before our `get` trap ever runs, defeating the
-// custom HarnessError below.
+// native ReferenceError before our `get` trap ever runs.
+//
+// IMPORTANT, verified empirically: throwing DIRECTLY inside this `get`
+// trap does NOT reliably propagate our HarnessError — for an unqualified
+// global identifier lookup (bare read OR call), V8 appears to need to
+// resolve further internals (plausibly `Error`/`ReferenceError` itself)
+// through the SAME trap while synthesizing its own exception, and the
+// whole thing collapses into a native `ReferenceError` instead of our
+// custom error. Returning a "poisoned" callable Proxy from `get` (which
+// only throws when it is later CALLED or has a property read on it, i.e.
+// during ordinary `[[Call]]`/`[[Get]]`, not during global-identifier
+// resolution) avoids that collapse and is what makes `unsupportedFunction()`
+// and a directly-returned bare reference correctly surface as HarnessError.
+//
+// KNOWN LIMITATION (accepted, not a security hole): if a script captures
+// this poisoned value WITHOUT calling or otherwise touching it — e.g.
+// `const leaked = { ref: someUnknownGlobal }; export default leaked;` —
+// no throw occurs, and the harmless (inert, always-throwing-when-used)
+// poisoned object ends up nested in the result. It never becomes a
+// genuinely working reference to anything forbidden, so this is a
+// detection-completeness gap, not a sandbox breach. For the SPECIFIC,
+// enumerable forbidden primitives (Date, Math, require, ...), T040/US5
+// instead pre-defines throwing GETTERS directly on the target object
+// BEFORE the script runs — that pattern throws eagerly, at first access,
+// with no such gap, and does not hit the collapse-to-ReferenceError issue
+// (confirmed empirically) because the property already exists when the
+// script accesses it, rather than being synthesized reactively inside
+// this trap.
 function buildSandboxContext(dslPrimitives) {
   const proxy = new Proxy(dslPrimitives, {
     has() {
@@ -118,11 +173,18 @@ function buildSandboxContext(dslPrimitives) {
       if (prop in target) {
         return target[prop];
       }
-      throw new HarnessError(
+      const error = new HarnessError(
         `Unknown global "${prop}" is not available in the sandbox. Only DSL primitives are permitted.`,
         'UNKNOWN_GLOBAL',
         { globalName: prop }
       );
+      const poisonedFunction = function () {
+        throw error;
+      };
+      return new Proxy(poisonedFunction, {
+        get: () => { throw error; },
+        apply: () => { throw error; }
+      });
     }
   });
 
@@ -153,8 +215,32 @@ async function runWorkflowScript(scriptText, options) {
       // Intentionally a no-op sink for now: FR-002 only requires log()
       // to be callable without affecting the script's result.
       return undefined;
+    },
+    agent(_call, opts = {}) {
+      if (!opts.label) {
+        throw new Error('agent() requires a label option');
+      }
+      
+      const label = opts.label;
+      const responses = options.agentResponses || {};
+      const response = responses[label];
+      
+      if (response === undefined) {
+        throw new Error(`No response scripted for agent label "${label}"`);
+      }
+      
+      // Handle both single response and array of responses
+      // If response is an array, use the first element; otherwise use the response directly
+      if (Array.isArray(response)) {
+        if (response.length === 0) {
+          throw new Error(`No response available for agent label "${label}"`);
+        }
+        return response[0]; // For now, just return the first response
+      }
+      return response;
     }
   };
+  
   const context = buildSandboxContext(dslPrimitives);
   const wrapped = `(async () => { ${prepareScript(scriptText)} })()`;
 
@@ -162,6 +248,11 @@ async function runWorkflowScript(scriptText, options) {
     const value = await vm.runInContext(wrapped, context, { timeout: 5000 });
     return { status: 'success', value };
   } catch (error) {
+    // Verified empirically that `instanceof` works correctly here even
+    // though the error may have been thrown from inside the vm context —
+    // HarnessError instances are always constructed in the host realm (the
+    // Proxy trap is host code), so identity is preserved across the vm
+    // boundary. No need for fragile duck-typing on name/code.
     if (error instanceof HarnessError) {
       return { status: 'error', error };
     }
