@@ -52,9 +52,9 @@ inheritance).
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Create `src/harness.js` as an empty module exporting a
+- [x] T001 [P] Create `src/harness.js` as an empty module exporting a
   `runWorkflowScript` stub that throws "not implemented"
-- [ ] T002 [P] Create `test/harness.test.js` as an empty `node:test` file
+- [x] T002 [P] Create `test/harness.test.js` as an empty `node:test` file
   (a single `test('placeholder', () => {})` so `node --test test/` runs
   clean)
 
@@ -67,35 +67,35 @@ inheritance).
 mocking (agent responses, budget values) lives here — that belongs to the
 Phase 3+ story that needs it.
 
-- [ ] T003 Write `node:test` unit test in `test/harness.test.js`: a
+- [x] T003 Write `node:test` unit test in `test/harness.test.js`: a
   minimal script (no `agent()`/`budget` calls, just `export default 42`)
   runs via `runWorkflowScript()` and returns `{status:'success', value:42}`
   (must fail — `runWorkflowScript` is still a stub)
-- [ ] T004 Implement the sandbox context (`vm.createContext()`) and the
+- [x] T004 Implement the sandbox context (`vm.createContext()`) and the
   export-capture + async-IIFE script wrapper (per research.md Challenge
   1/2) in `src/harness.js`, enough to make T003 pass
-- [ ] T005 Write `node:test` unit test: accessing any global not in the
+- [x] T005 Write `node:test` unit test: accessing any global not in the
   DSL allowlist (e.g. `console`) throws a `HarnessError` with code
   `UNKNOWN_GLOBAL` (must fail)
-- [ ] T006 Implement the Proxy-based global allowlist (per research.md
+- [x] T006 Implement the Proxy-based global allowlist (per research.md
   Challenge 4) in `src/harness.js`, enough to make T005 pass — this is
   the shared mechanism FR-010/FR-011 both build on later (T021, T023)
-- [ ] T007 Write `node:test` unit test: `options.args` is exposed
+- [x] T007 Write `node:test` unit test: `options.args` is exposed
   unmodified as the `args` global inside the script (must fail)
-- [ ] T008 Implement `args` injection into the sandbox context in
+- [x] T008 Implement `args` injection into the sandbox context in
   `src/harness.js`, enough to make T007 pass
-- [ ] T009 Write `node:test` unit test (FR-002): `phase(title)` is
+- [x] T009 Write `node:test` unit test (FR-002): `phase(title)` is
   callable inside the script and, when the script declares
   `export const meta = { phases: [...] }`, a `phase()` call with a title
   NOT in `meta.phases[].title` produces a `ScriptError` (per data-model.md
   Phase entity / contracts/runWorkflowScript.md Phase Validation) — must
   fail, `phase()` does not exist yet
-- [ ] T010 Implement the `phase()` DSL primitive, including `meta.phases`
+- [x] T010 Implement the `phase()` DSL primitive, including `meta.phases`
   validation, in `src/harness.js`, enough to make T009 pass
-- [ ] T011 Write `node:test` unit test (FR-002): `log(message)` is
+- [x] T011 Write `node:test` unit test (FR-002): `log(message)` is
   callable inside the script and does not throw or affect the script's
   return value — must fail, `log()` does not exist yet
-- [ ] T012 Implement the `log()` DSL primitive (records/no-ops safely) in
+- [x] T012 Implement the `log()` DSL primitive (records/no-ops safely) in
   `src/harness.js`, enough to make T011 pass
 
 **Checkpoint**: `runWorkflowScript()` can run a script with no DSL calls,
