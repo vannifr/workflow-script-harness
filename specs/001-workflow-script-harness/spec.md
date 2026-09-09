@@ -193,9 +193,12 @@ de verboden aanroep benoemt.
   harness-fout?
 - Wat gebeurt er als `budget.spent()` vaker wordt aangeroepen dan er
   gescripte waarden zijn opgegeven?
-- Wat gebeurt er als hetzelfde label met meerdere, verschillende
-  volgordes van antwoorden opnieuw gebruikt wordt binnen één testrun
-  (bv. bij hertesten in dezelfde run)?
+- Elke aanroep van de harness-functie is stateless: de gescripte
+  agent-antwoorden en het budgetscript gelden enkel voor die ene aanroep
+  en worden niet gedeeld tussen aanroepen. Een auteur die dezelfde
+  scripttekst met andere gescripte antwoorden wil hertesten, doet dat via
+  een nieuwe, onafhankelijke aanroep — niet door state binnen één aanroep
+  te hergebruiken.
 
 ## Requirements *(mandatory)*
 
@@ -245,6 +248,12 @@ de verboden aanroep benoemt.
   teruggeven van een fout die de harness zelf signaleert (bv. verboden
   aanroep, ontbrekend gescript antwoord) — de auteur moet uit de fout
   kunnen afleiden of het script of de testopstelling de oorzaak is.
+- **FR-013**: Wanneer het geteste script een functie aanroept die geen deel
+  uitmaakt van de ondersteunde DSL-primitieven (`agent`, `pipeline`,
+  `parallel`, `phase`, `log`, `args`, `budget`), MUST de harness dit
+  signaleren met een duidelijke fout die de onbekende functienaam benoemt,
+  in plaats van een stille `undefined`-aanroep of een onbegrijpelijke
+  crash (zie User Story 1, acceptatiescenario 3).
 
 ### Key Entities *(include if feature involves data)*
 
