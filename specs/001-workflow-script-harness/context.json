@@ -1,7 +1,7 @@
 {
   "testify": {
-    "assertion_hash": "02012a65cca12c1bd3f2ca28bc21cebeafefe9b20a0aa06c144eb63a95b56734",
-    "generated_at": "2026-09-09T19:23:50Z",
+    "assertion_hash": "38810c4d015705b5abb06ff3de79b479153a7dc6a77f3fb60418202e6320448f",
+    "generated_at": "2026-09-09T19:37:17Z",
     "features_dir": "specs/001-workflow-script-harness/tests/features",
     "file_count": 5
   }

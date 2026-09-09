@@ -3,7 +3,7 @@
 @US-001
 Feature: US1 - Run a workflow-script unmodified (Priority: P1)
 
-  @TS-001 @FR-001 @FR-013 @SC-001 @P1 @acceptance
+  @TS-001 @FR-001 @FR-002 @FR-013 @SC-001 @P1 @acceptance
   Scenario: A valid script with one agent() call runs unmodified via the harness
     Given a valid workflow script that reads args and makes one agent() call
     When the script is executed via the harness
@@ -20,3 +20,9 @@ Feature: US1 - Run a workflow-script unmodified (Priority: P1)
     Given a script that uses a DSL function not supported by the harness
     When the script is executed
     Then the harness provides a clear error message that names the unknown function
+
+  @TS-015 @FR-012 @SC-005 @P1 @acceptance
+  Scenario: A plain script bug is classified as a ScriptError, not a HarnessError
+    Given a script that throws a plain programming error unrelated to any forbidden call
+    When the script is executed
+    Then the harness returns a ScriptError distinguishable from a HarnessError by name

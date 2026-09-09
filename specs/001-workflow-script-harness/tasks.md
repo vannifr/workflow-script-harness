@@ -35,20 +35,18 @@ top of the unit tests, not a replacement for them.
 | TS-012 | FR-010 | US5 |
 | TS-013 | FR-010 | US5 |
 | TS-014 | FR-011 | US5 |
+| TS-015 | FR-012 | US1 |
 
-FR-012 (harness-error vs. script-error classification) is cross-cutting —
-it has no single TS-ID; it is exercised implicitly across all five
-BDD user-story runs and gets one dedicated task in Polish.
-
-**Known gap, flagged by `/iikit-06-analyze` (analysis.md), not fixed
-here**: none of the 14 hash-locked scenarios carry an explicit `@FR-002`
-or `@FR-012` tag — both requirements are exercised implicitly by nearly
-every scenario (FR-002: every scenario that successfully calls a DSL
-primitive; FR-012: every scenario asserting an error `name`/`code`), but
-are not individually traceable via tag. Fixing this means re-running
-`/iikit-04-testify` to add tags to existing scenarios (never hand-edit
-`.feature` files) — left as a follow-up decision for the user rather than
-done silently here.
+`/iikit-06-analyze` (analysis.md) originally flagged FR-002 and FR-012 as
+having no `@FR-XXX` tag in any scenario. Resolved via a follow-up
+`/iikit-04-testify` run: `@FR-002` was added to TS-001 (already exercises
+`agent()` as an ambient global), and a new TS-015 scenario was added
+specifically for FR-012 (a plain script bug classified as `ScriptError`,
+distinguishable from `HarnessError`) — now 15 scenarios total, hash
+re-locked. T046/T047 (Polish phase) still implement the underlying
+`HarnessError`/`ScriptError` classification; TS-015 is covered
+automatically by T019's `--tags "@US-001"` run (Feature-level tag
+inheritance).
 
 ---
 

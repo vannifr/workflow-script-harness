@@ -80,3 +80,19 @@ Then('the harness provides a clear error message that names the unknown function
     this.scriptResult.error.message.toLowerCase().includes('not defined')
   );
 });
+
+Given('a script that throws a plain programming error unrelated to any forbidden call', function () {
+  this.script = `
+    export const meta = { name: 'test-workflow', phases: [] };
+    const value = undefined;
+    const result = value.someProperty;
+    export default result;
+  `;
+  this.options = {};
+});
+
+Then('the harness returns a ScriptError distinguishable from a HarnessError by name', function () {
+  assert.strictEqual(this.scriptResult.status, 'error');
+  assert.strictEqual(this.scriptResult.error.name, 'ScriptError');
+  assert.notStrictEqual(this.scriptResult.error.name, 'HarnessError');
+});
