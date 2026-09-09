@@ -1,0 +1,17 @@
+{
+  "name": "workflow-script-harness",
+  "version": "1.0.0",
+  "description": "A test harness for Claude Code's Workflow-tool DSL",
+  "main": "src/harness.js",
+  "scripts": {
+    "test": "node --test test/ && cucumber-js",
+    "test:unit": "node --test test/",
+    "test:bdd": "cucumber-js"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.2.1"
+  },
+  "keywords": ["workflow", "testing", "dsl", "sandbox"],
+  "author": "",
+  "license": "MIT"
+}
