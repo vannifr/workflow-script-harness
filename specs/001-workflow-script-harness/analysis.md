@@ -13,8 +13,8 @@ disproved. Findings below are the corrected, verified set.
 | ID | Category | Severity | Location(s) | Summary | Recommendation |
 |----|----------|----------|-------------|---------|----------------|
 | A01 | F (Coverage Gap) | HIGH | tasks.md (fixed) | FR-002 requires `phase()` and `log()` as ambient DSL globals, but the original tasks.md (T001-T046) had no task implementing either — only `agent`/`parallel`/`pipeline`/`args`/`budget` had explicit tasks. | **Fixed directly** (tasks.md is not hash-locked): inserted T009-T012 (write-test/implement pairs for `phase()` incl. `meta.phases` validation, and `log()`) into Phase 2 Foundational; all subsequent task IDs renumbered T013-T050. |
-| A02 | H1 (Untested requirement) | HIGH | tests/features/*.feature | No `.feature` scenario carries an `@FR-002` tag (`grep -rn "@FR-002" tests/features/*.feature` → 0 matches), even though TS-001 already exercises `agent()` as an ambient global and could legitimately carry this tag. | Not fixed here (hash-locked content) — re-run `/iikit-04-testify` to add `@FR-002` to TS-001's tag line, or accept as a documented exception (see tasks.md's "Known gap" note). |
-| A03 | H1 (Untested requirement) | HIGH | tests/features/*.feature | No scenario carries an `@FR-012` tag. FR-012 (HarnessError vs. ScriptError classification) is cross-cutting and currently only covered by a planned unit test (T046), not by any BDD scenario — none of the 14 scenarios exercises a genuine `ScriptError` path (a plain script bug), only `HarnessError` paths. | Not fixed here — decide whether FR-012 needs its own dedicated scenario (a script with a real bug, e.g. `undefined.property`) via `/iikit-04-testify`, or remains unit-test-only by design. |
+| A02 | H1 (Untested requirement) | HIGH — **RESOLVED** | tests/features/US1-run-unmodified.feature | No `.feature` scenario carried an `@FR-002` tag. | **Fixed** via a follow-up `/iikit-04-testify` run: `@FR-002` added to TS-001's tag line (2026-09-09, commit `8171982`). |
+| A03 | H1 (Untested requirement) | HIGH — **RESOLVED** | tests/features/US1-run-unmodified.feature | No scenario carried an `@FR-012` tag; no scenario exercised a genuine `ScriptError` path. | **Fixed**: new scenario TS-015 added (a plain script bug classified as `ScriptError`, distinguishable from `HarnessError`), hash re-locked, 15 scenarios total (2026-09-09, commit `8171982`). |
 
 No findings for passes A (duplication), B (ambiguity), C (underspecification),
 D (constitution alignment — all 5 principles ALIGNED, including the
@@ -58,33 +58,27 @@ real spec.md ID).
 **Metrics**:
 - Total requirements: 18 (13 FR + 5 SC)
 - Total tasks: 50 (after fixing A01; was 46)
+- Total BDD scenarios: 15 (after fixing A02/A03 with TS-015; was 14)
 - Coverage (task-level): 100% — every FR/SC has ≥1 task
-- Coverage (BDD-tag-level): 16 of 18 (89%) — FR-002 and FR-012 are the
-  exceptions (A02, A03)
-- Findings: CRITICAL 0, HIGH 2 (open: A02, A03) + 1 HIGH found-and-fixed
-  (A01), MEDIUM 0, LOW 0
+- Coverage (BDD-tag-level): 18 of 18 (100%) — A02/A03 resolved
+- Findings: CRITICAL 0, HIGH 0 open (3 found, all 3 fixed: A01, A02, A03),
+  MEDIUM 0, LOW 0
 
-**Health Score**: 90/100 (baseline — first run, no prior trend)
-
-Score = `100 - (0×20 + 2×5 + 0×2 + 0×0.5)` = 90, counting only the two
-currently-open findings (A02, A03); A01 is already resolved in tasks.md.
+**Health Score**: 100/100 (↑ improving, from 90 at first pass)
 
 ## Score History
 
 | Run | Score | Coverage | Critical | High | Medium | Low | Total |
 |-----|-------|----------|----------|------|--------|-----|-------|
 | 2026-09-09T19:40:00Z | 90 | 89% (BDD-tag) / 100% (task) | 0 | 2 | 0 | 0 | 2 |
+| 2026-09-09T19:55:00Z | 100 | 100% (BDD-tag) / 100% (task) | 0 | 0 | 0 | 0 | 0 |
 
 ## Next Actions
 
-No CRITICAL issues — safe to proceed to `/iikit-07-implement`. The two
-open HIGH findings (A02, A03) are traceability completeness gaps, not
-missing functionality (the underlying behavior IS planned via unit tests
-either way) — recommend resolving via a follow-up `/iikit-04-testify` run
-before or shortly after implementation, not as a hard blocker.
+No open issues — clear to proceed to `/iikit-07-implement`.
 
 ## Remediation Offer
 
-Suggest concrete remediation edits (re-running `/iikit-04-testify` to add
-the `@FR-002`/`@FR-012` tags, or drafting a new FR-012-specific scenario)?
-Not applied automatically — awaiting a decision.
+All findings from the first pass were remediated in this same session
+(tasks.md fix + testify re-run); nothing outstanding to offer remediation
+for.
