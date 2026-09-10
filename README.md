@@ -164,11 +164,9 @@ commitment beyond that.
 
 ## Contributing
 
-Bug reports and small, focused pull requests are welcome via
-[GitHub Issues](https://github.com/vannifr/workflow-script-harness/issues).
-This project follows spec-driven development (see `CONSTITUTION.md`) —
-for anything beyond a trivial fix, a short spec of the change and why it's
-needed makes review much faster than a large unexplained diff.
+Bug reports and small, focused pull requests are welcome — see
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the fork/branch/PR process, what
+CI checks a pull request runs, and code-style expectations.
 
 ## License
 

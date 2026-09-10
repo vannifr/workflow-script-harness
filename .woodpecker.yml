@@ -8,10 +8,18 @@
 # same scripts used locally (.githooks/pre-commit, .githooks/pre-push).
 # Single source of truth: a step here is just a name plus which
 # (sub)command, never separately-maintained logic.
+#
+# gitleaks/env-guard/test also run on pull_request (this is a public repo —
+# an external contributor's PR gets the same feedback before merge as a
+# direct push does). sonarqube stays push-to-main-only: it's the only step
+# that reads secrets (SONAR_HOST_URL/SONAR_TOKEN), and a fork's PR pipeline
+# must never get access to those, regardless of how Woodpecker itself
+# scopes secrets for forks — this is enforced here, not assumed.
 
 when:
   - event: push
     branch: main
+  - event: pull_request
 
 steps:
   - name: gitleaks
@@ -25,6 +33,7 @@ steps:
     when:
       - event: push
         branch: main
+      - event: pull_request
 
   - name: env-guard
     # Belt-and-suspenders alongside gitleaks: .env is in .gitignore, but
@@ -38,6 +47,7 @@ steps:
     when:
       - event: push
         branch: main
+      - event: pull_request
 
   - name: test
     # node:22 (not -slim): no extra OS deps needed for node:test or
@@ -51,11 +61,14 @@ steps:
     when:
       - event: push
         branch: main
+      - event: pull_request
 
   - name: sonarqube
     # sonar_host_url/sonar_token are GLOBAL Woodpecker secrets on this
     # instance (shared with the other repos). coverage.lcov comes from the
     # preceding "test" step (shared workspace within one pipeline run).
+    # push-to-main only (see the file-level comment above) — never runs on
+    # pull_request, so a fork PR is never handed these secrets.
     image: sonarsource/sonar-scanner-cli@sha256:23ca0f137965d9dff2198074043fd48d386280bc5d0ccac8c8349cea4cf096a9
     environment:
       SONAR_HOST_URL:
