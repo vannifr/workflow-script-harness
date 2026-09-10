@@ -58,8 +58,8 @@ Test that a script handles both successful and failed agent calls correctly.
 ### Test Setup
 
 The test author has a workflow script that:
-- Calls `agent()` twice with the same label
-- Handles the case where the second agent call fails (returns null)
+- Calls `agent()` once with a given label
+- Handles the case where that agent call fails (a scripted `{type: "null"}` response resolves to `null`)
 - Uses a fallback value when the agent fails
 
 **Script Behavior**:

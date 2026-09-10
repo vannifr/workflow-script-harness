@@ -1,0 +1,7 @@
+#!/bin/sh
+# Dat nogmaals, plus het langzamere/netwerk-afhankelijke deel
+# (zie ci-lokaal-parity-skill). env-guard/gitleaks draaien al in
+# pre-commit; hier enkel het netwerkafhankelijke deel (SonarQube).
+set -e
+./scripts/verify.sh
+./scripts/local-ci-checks.sh sonarqube

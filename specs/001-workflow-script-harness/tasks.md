@@ -145,23 +145,23 @@ phase is done.
 **Independent Test**: `npx cucumber-js --tags "@US-002"` passes once this
 phase is done.
 
-- [ ] T020 [US2] Write `node:test` unit test: two `agent()` calls with the
+- [x] T020 [US2] Write `node:test` unit test: two `agent()` calls with the
   same label consume scripted responses in order (`[A, B]` → first call
   gets `A`, second gets `B`) (TS-004, FR-003; must fail)
-- [ ] T021 [US2] Extend the `agent()` mock in `src/harness.js` to consume
+- [x] T021 [US2] Extend the `agent()` mock in `src/harness.js` to consume
   an ordered response list per label, enough to make T020 pass
-- [ ] T022 [US2] Write `node:test` unit test: a scripted `{type:'null'}`
+- [x] T022 [US2] Write `node:test` unit test: a scripted `{type:'null'}`
   response resolves the `agent()` call to `null` rather than throwing
   (TS-005, FR-004; must fail)
-- [ ] T023 [US2] Implement null-response simulation in the `agent()` mock
+- [x] T023 [US2] Implement null-response simulation in the `agent()` mock
   in `src/harness.js`, enough to make T022 pass
-- [ ] T024 [US2] Write `node:test` unit test: calling `agent()` with a
+- [x] T024 [US2] Write `node:test` unit test: calling `agent()` with a
   label more times than it has scripted responses throws a `HarnessError`
   with code `EXHAUSTED_AGENT_RESPONSES` naming the label (TS-006, FR-005;
   must fail)
-- [ ] T025 [US2] Implement response-exhaustion detection in the `agent()`
+- [x] T025 [US2] Implement response-exhaustion detection in the `agent()`
   mock in `src/harness.js`, enough to make T024 pass
-- [ ] T026 [US2] Run `npx cucumber-js --tags "@US-002"` (covers
+- [x] T026 [US2] Run `npx cucumber-js --tags "@US-002"` (covers
   [TS-004, TS-005, TS-006]) and fix any gap the unit tests above missed
 
 **Checkpoint**: User Story 2 fully functional and independently testable.
@@ -173,27 +173,27 @@ phase is done.
 **Independent Test**: `npx cucumber-js --tags "@US-003"` passes once this
 phase is done.
 
-- [ ] T027 [US3] Write `node:test` unit test: `parallel()` over 3 thunks
+- [x] T027 [US3] Write `node:test` unit test: `parallel()` over 3 thunks
   produces an execution trace showing at least two entries with
   overlapping `startCounter`/`endCounter` ranges (TS-007, FR-006; must
   fail — no trace exists yet)
-- [ ] T028 [US3] Implement the counter-based execution trace (per
+- [x] T028 [US3] Implement the counter-based execution trace (per
   research.md Challenge 3) and `parallel()` using real concurrent
   execution (`Promise.all`, not a sequential loop) in `src/harness.js`,
   enough to make T027 pass
-- [ ] T029 [US3] Write `node:test` unit test: `pipeline()` over 2+ items
+- [x] T029 [US3] Write `node:test` unit test: `pipeline()` over 2+ items
   with 2 async stages preserves per-item stage ordering (stage 2 for item
   N never starts before stage 1 for item N completes) while still
   allowing items to overlap across stages (TS-008, FR-007; must fail)
-- [ ] T030 [US3] Implement `pipeline()` with per-item stage chains (per
+- [x] T030 [US3] Implement `pipeline()` with per-item stage chains (per
   research.md Challenge 5) in `src/harness.js`, enough to make T029 pass
-- [ ] T031 [US3] Write `node:test` unit test: a failing thunk inside
+- [x] T031 [US3] Write `node:test` unit test: a failing thunk inside
   `parallel()` produces a documented failure shape (`ParallelError` with
   completed/failed/pending, per research.md Challenge 6) (TS-009,
   FR-006+FR-007; must fail)
-- [ ] T032 [US3] Implement fail-fast `ParallelError` handling in
+- [x] T032 [US3] Implement fail-fast `ParallelError` handling in
   `parallel()` in `src/harness.js`, enough to make T031 pass
-- [ ] T033 [US3] Run `npx cucumber-js --tags "@US-003"` (covers
+- [x] T033 [US3] Run `npx cucumber-js --tags "@US-003"` (covers
   [TS-007, TS-008, TS-009]) and fix any gap the unit tests above missed
 
 **Checkpoint**: User Story 3 fully functional and independently testable.
@@ -205,18 +205,18 @@ phase is done.
 **Independent Test**: `npx cucumber-js --tags "@US-004"` passes once this
 phase is done.
 
-- [ ] T034 [US4] Write `node:test` unit test: `options.budget.total` is
+- [x] T034 [US4] Write `node:test` unit test: `options.budget.total` is
   exposed unmodified as `budget.total` inside the script (TS-010, FR-008;
   must fail)
-- [ ] T035 [US4] Implement `budget.total` injection in `src/harness.js`,
+- [x] T035 [US4] Implement `budget.total` injection in `src/harness.js`,
   enough to make T034 pass
-- [ ] T036 [US4] Write `node:test` unit test: successive `budget.spent()`
+- [x] T036 [US4] Write `node:test` unit test: successive `budget.spent()`
   calls consume `options.budget.spentSequence` in order, and an
   over-exhausted call throws a `HarnessError` with code
   `EXHAUSTED_BUDGET_SPENT` (TS-011, FR-009; must fail)
-- [ ] T037 [US4] Implement `budget.spent()` sequence consumption in
+- [x] T037 [US4] Implement `budget.spent()` sequence consumption in
   `src/harness.js`, enough to make T036 pass
-- [ ] T038 [US4] Run `npx cucumber-js --tags "@US-004"` (covers
+- [x] T038 [US4] Run `npx cucumber-js --tags "@US-004"` (covers
   [TS-010, TS-011]) and fix any gap the unit tests above missed
 
 **Checkpoint**: User Story 4 fully functional and independently testable.
@@ -228,27 +228,27 @@ phase is done.
 **Independent Test**: `npx cucumber-js --tags "@US-005"` passes once this
 phase is done.
 
-- [ ] T039 [US5] Write `node:test` unit test: calling `Date.now()` inside
+- [x] T039 [US5] Write `node:test` unit test: calling `Date.now()` inside
   the script throws a `HarnessError` with code `FORBIDDEN_PRIMITIVE`
   naming `Date` (TS-012, FR-010; must fail against the Phase 2 allowlist,
   which currently treats unlisted globals as `UNKNOWN_GLOBAL`, not
   `FORBIDDEN_PRIMITIVE`)
-- [ ] T040 [US5] Extend the Proxy allowlist from T006 to distinguish
+- [x] T040 [US5] Extend the Proxy allowlist from T006 to distinguish
   explicitly-forbidden globals (`Date`, `Math`, `require`, etc. — see
   contracts/error-types.md) from merely-unknown ones, in `src/harness.js`,
   enough to make T039 pass
-- [ ] T041 [US5] Write `node:test` unit test: `Math.random()` and
+- [x] T041 [US5] Write `node:test` unit test: `Math.random()` and
   `new Date()` both fail the same recognizable way as T039 (TS-013,
   FR-010; must fail until covered by T040's list)
-- [ ] T042 [US5] Add `Math` and the `Date` constructor to the forbidden
+- [x] T042 [US5] Add `Math` and the `Date` constructor to the forbidden
   list from T040 in `src/harness.js`, enough to make T041 pass
-- [ ] T043 [US5] Write `node:test` unit test: calling `require('fs')`
+- [x] T043 [US5] Write `node:test` unit test: calling `require('fs')`
   inside the script throws an error naming the call as outside the
   sandbox (TS-014, FR-011; must fail)
-- [ ] T044 [US5] Add `require`/`module`/`process`/other Node builtins to
+- [x] T044 [US5] Add `require`/`module`/`process`/other Node builtins to
   the forbidden list from T040, with a sandbox-boundary-specific message,
   in `src/harness.js`, enough to make T043 pass
-- [ ] T045 [US5] Run `npx cucumber-js --tags "@US-005"` (covers
+- [x] T045 [US5] Run `npx cucumber-js --tags "@US-005"` (covers
   [TS-012, TS-013, TS-014]) and fix any gap the unit tests above missed
 
 **Checkpoint**: User Story 5 fully functional and independently testable.
@@ -257,21 +257,21 @@ phase is done.
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T046 Write `node:test` unit test: a plain programmer error thrown
+- [x] T046 Write `node:test` unit test: a plain programmer error thrown
   by the script itself (not a `HarnessError`) is returned as a
   `ScriptError` distinguishable by `name`, per FR-012
-- [ ] T047 Implement the `HarnessError`/`ScriptError` classification
+- [x] T047 Implement the `HarnessError`/`ScriptError` classification
   wrapper (FR-012) in `src/harness.js`, enough to make T046 pass —
   cross-cutting: re-run T019/T026/T033/T038/T045's BDD tag commands
   afterward to confirm no regression
-- [ ] T048 [P] Walk through every scenario in `quickstart.md` manually
+- [x] T048 [P] Walk through every scenario in `quickstart.md` manually
   against the finished `src/harness.js` and fix any discrepancy between
   the documented behavior and the implementation
-- [ ] T049 Add a `"test"` script to `package.json` running both
+- [x] T049 Add a `"test"` script to `package.json` running both
   `node --test test/` and `cucumber-js` as one command, and confirm it
   exits non-zero on any failure (already scaffolded in T001/T002's setup;
   verify it still matches after all phases)
-- [ ] T050 Run the full suite (`npm test`) once, from a clean
+- [x] T050 Run the full suite (`npm test`) once, from a clean
   `node_modules` install, as the final gate before considering the
   feature complete
 

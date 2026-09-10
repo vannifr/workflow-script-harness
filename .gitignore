@@ -1,2 +1,6 @@
 node_modules/
 .specify/dashboard.html
+coverage.lcov
+.env
+.env.*
+!.env.example

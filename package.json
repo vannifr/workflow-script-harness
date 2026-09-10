@@ -4,9 +4,11 @@
   "description": "A test harness for Claude Code's Workflow-tool DSL",
   "main": "src/harness.js",
   "scripts": {
-    "test": "node --test && cucumber-js",
+    "test": "./scripts/verify.sh all",
     "test:unit": "node --test",
-    "test:bdd": "cucumber-js"
+    "test:bdd": "cucumber-js",
+    "test:coverage": "./scripts/verify.sh coverage",
+    "prepare": "(git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git config core.hooksPath .githooks) || true"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1"

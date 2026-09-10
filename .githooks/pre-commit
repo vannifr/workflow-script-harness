@@ -1,0 +1,8 @@
+#!/bin/sh
+# Snel, geen netwerk: het lokale gate (zie ci-lokaal-parity-skill).
+# env-guard/gitleaks hier, niet in pre-push: een secret dat pas bij push
+# gevangen wordt zit al in de lokale geschiedenis.
+set -e
+./scripts/local-ci-checks.sh env-guard
+./scripts/local-ci-checks.sh gitleaks
+./scripts/verify.sh

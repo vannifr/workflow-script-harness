@@ -34,10 +34,22 @@ Then('the test can demonstrate that at least two of those tasks were running con
   assert.ok(this.scriptResult.value.some(r => r === 'result-B'));
   assert.ok(this.scriptResult.value.some(r => r === 'result-C'));
 
-  // Genuine overlap must be demonstrated via the harness's execution trace
-  // (see contracts/runWorkflowScript.md: startCounter/endCounter), not
-  // merely inferred from the result order — tighten this assertion once
-  // src/harness.js exposes result.trace.
+  // Genuine overlap, demonstrated via the harness's execution trace
+  // (contracts/runWorkflowScript.md: startCounter/endCounter) rather than
+  // merely inferred from result order: every parallel entry's start must
+  // precede every OTHER entry's end — i.e. all three were already running
+  // before any single one finished.
+  const entries = this.scriptResult.trace.entries.filter(e => e.type === 'parallel');
+  assert.strictEqual(entries.length, 3);
+  let overlapFound = false;
+  for (const a of entries) {
+    for (const b of entries) {
+      if (a !== b && a.startCounter < b.endCounter && b.startCounter < a.endCounter) {
+        overlapFound = true;
+      }
+    }
+  }
+  assert.ok(overlapFound, 'expected at least two parallel entries to genuinely overlap');
 });
 
 Given('a script that uses pipeline\\(\\) to chain steps sequentially', function () {
@@ -95,13 +107,13 @@ Given('a script where a task within parallel\\(\\) fails', function () {
 });
 
 Then('the test can verify how this affects other concurrently running tasks according to the real Workflow-tool behavior', function () {
-  // A failure in one parallel() task is expected to surface as a
-  // ParallelError-style failure (see research.md Challenge 6); the exact
-  // shape is finalized during implementation.
+  // Fail-fast: parallel() waits for every thunk to settle, then throws a
+  // ParallelError (host-realm, classified as ScriptError per FR-012 since
+  // the underlying cause is the script's own thrown error) listing which
+  // sibling tasks completed vs. failed — see research.md Challenge 6.
   assert.strictEqual(this.scriptResult.status, 'error');
-  assert.ok(
-    this.scriptResult.error.message.includes('parallel') ||
-    this.scriptResult.error.message.includes('concurrent') ||
-    this.scriptResult.error.message.includes('task')
-  );
+  assert.strictEqual(this.scriptResult.error.name, 'ScriptError');
+  assert.strictEqual(this.scriptResult.error.originalError.name, 'ParallelError');
+  assert.strictEqual(this.scriptResult.error.originalError.failed.length, 1);
+  assert.strictEqual(this.scriptResult.error.originalError.completed.length, 1);
 });

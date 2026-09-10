@@ -1,0 +1,69 @@
+# Woodpecker CI/CD pipeline.
+#
+# Geen deploy-stap: dit is een test-harness library, geen webservice/site.
+# Deze pipeline is puur de gate: faalt een stap, dan mag de push niet als
+# "groen" gelden.
+#
+# Elke stap roept scripts/verify.sh of scripts/local-ci-checks.sh aan —
+# dezelfde scripts als lokaal (.githooks/pre-commit, .githooks/pre-push).
+# Eén bron van waarheid: een stap hier is enkel nog een naam + welk
+# (sub)commando, geen apart onderhouden logica.
+
+when:
+  - event: push
+    branch: main
+
+steps:
+  - name: gitleaks
+    # Scant enkel de commits van déze push (CI_PREV_COMMIT_SHA/
+    # CI_COMMIT_SHA, zie scripts/local-ci-checks.sh) — een full-history-scan
+    # blokkeert een repo permanent zodra er ooit een secret in de
+    # geschiedenis heeft gestaan.
+    image: ghcr.io/gitleaks/gitleaks:v8.30.1
+    commands:
+      - ./scripts/local-ci-checks.sh --strict gitleaks
+    when:
+      - event: push
+        branch: main
+
+  - name: env-guard
+    # Belt-and-suspenders naast gitleaks: .env staat wel in .gitignore maar
+    # als iemand git add -f gebruikt glipt het door .gitignore heen.
+    # alpine heeft standaard geen git — zonder deze apk add faalt
+    # `git ls-files` stil en zou de check vacuously waar overgeslagen worden.
+    image: alpine:3.20
+    commands:
+      - apk add --no-cache git
+      - ./scripts/local-ci-checks.sh --strict env-guard
+    when:
+      - event: push
+        branch: main
+
+  - name: test
+    # node:22 (niet -slim): geen extra OS-deps nodig voor node:test of
+    # cucumber-js, en dit is dezelfde majorversie als lokaal ontwikkeld.
+    image: node:22
+    commands:
+      - npm ci
+      - ./scripts/verify.sh unit
+      - ./scripts/verify.sh bdd
+      - ./scripts/verify.sh coverage
+    when:
+      - event: push
+        branch: main
+
+  - name: sonarqube
+    # sonar_host_url/sonar_token zijn GLOBAL Woodpecker-secrets op deze
+    # instance (gedeeld met de andere repo's). coverage.lcov komt van de
+    # voorgaande "test"-stap (gedeelde workspace binnen één pipeline-run).
+    image: sonarsource/sonar-scanner-cli@sha256:23ca0f137965d9dff2198074043fd48d386280bc5d0ccac8c8349cea4cf096a9
+    environment:
+      SONAR_HOST_URL:
+        from_secret: sonar_host_url
+      SONAR_TOKEN:
+        from_secret: sonar_token
+    commands:
+      - ./scripts/local-ci-checks.sh --strict sonarqube
+    when:
+      - event: push
+        branch: main
