@@ -152,3 +152,24 @@ governing principles (TDD is mandatory) and
 `specs/001-workflow-script-harness/` for the full spec-driven history of
 this feature (constitution → spec → plan → tasks → implementation, all
 independently reviewed and verified at each step, not just generated).
+
+## Status
+
+A small, focused tool, built and used for testing my own Workflow-tool
+scripts — not an official Anthropic project. It has no dependencies beyond
+Node's built-in `vm` module, a small test surface, and a spec-driven
+history (see above) if you want to check a design decision before relying
+on it. Issues and pull requests are welcome; there's no formal support
+commitment beyond that.
+
+## Contributing
+
+Bug reports and small, focused pull requests are welcome via
+[GitHub Issues](https://github.com/vannifr/workflow-script-harness/issues).
+This project follows spec-driven development (see `CONSTITUTION.md`) —
+for anything beyond a trivial fix, a short spec of the change and why it's
+needed makes review much faster than a large unexplained diff.
+
+## License
+
+[MIT](LICENSE) — see the `LICENSE` file for the full text.
