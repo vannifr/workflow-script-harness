@@ -1,13 +1,13 @@
 # Woodpecker CI/CD pipeline.
 #
-# Geen deploy-stap: dit is een test-harness library, geen webservice/site.
-# Deze pipeline is puur de gate: faalt een stap, dan mag de push niet als
-# "groen" gelden.
+# No deploy step: this is a test-harness library, not a web service/site.
+# This pipeline is purely the gate: if a step fails, the push must not
+# count as "green".
 #
-# Elke stap roept scripts/verify.sh of scripts/local-ci-checks.sh aan —
-# dezelfde scripts als lokaal (.githooks/pre-commit, .githooks/pre-push).
-# Eén bron van waarheid: een stap hier is enkel nog een naam + welk
-# (sub)commando, geen apart onderhouden logica.
+# Every step calls scripts/verify.sh or scripts/local-ci-checks.sh — the
+# same scripts used locally (.githooks/pre-commit, .githooks/pre-push).
+# Single source of truth: a step here is just a name plus which
+# (sub)command, never separately-maintained logic.
 
 when:
   - event: push
@@ -15,10 +15,10 @@ when:
 
 steps:
   - name: gitleaks
-    # Scant enkel de commits van déze push (CI_PREV_COMMIT_SHA/
-    # CI_COMMIT_SHA, zie scripts/local-ci-checks.sh) — een full-history-scan
-    # blokkeert een repo permanent zodra er ooit een secret in de
-    # geschiedenis heeft gestaan.
+    # Scans only the commits from THIS push (CI_PREV_COMMIT_SHA/
+    # CI_COMMIT_SHA, see scripts/local-ci-checks.sh) — a full-history scan
+    # would permanently block a repo the moment a secret has ever existed
+    # anywhere in its history.
     image: ghcr.io/gitleaks/gitleaks:v8.30.1
     commands:
       - ./scripts/local-ci-checks.sh --strict gitleaks
@@ -27,10 +27,10 @@ steps:
         branch: main
 
   - name: env-guard
-    # Belt-and-suspenders naast gitleaks: .env staat wel in .gitignore maar
-    # als iemand git add -f gebruikt glipt het door .gitignore heen.
-    # alpine heeft standaard geen git — zonder deze apk add faalt
-    # `git ls-files` stil en zou de check vacuously waar overgeslagen worden.
+    # Belt-and-suspenders alongside gitleaks: .env is in .gitignore, but
+    # `git add -f` slips right past .gitignore. alpine has no git by
+    # default — without this apk add, `git ls-files` fails silently and
+    # the check would be vacuously skipped.
     image: alpine:3.20
     commands:
       - apk add --no-cache git
@@ -40,8 +40,8 @@ steps:
         branch: main
 
   - name: test
-    # node:22 (niet -slim): geen extra OS-deps nodig voor node:test of
-    # cucumber-js, en dit is dezelfde majorversie als lokaal ontwikkeld.
+    # node:22 (not -slim): no extra OS deps needed for node:test or
+    # cucumber-js, and it's the same major version used in local development.
     image: node:22
     commands:
       - npm ci
@@ -53,9 +53,9 @@ steps:
         branch: main
 
   - name: sonarqube
-    # sonar_host_url/sonar_token zijn GLOBAL Woodpecker-secrets op deze
-    # instance (gedeeld met de andere repo's). coverage.lcov komt van de
-    # voorgaande "test"-stap (gedeelde workspace binnen één pipeline-run).
+    # sonar_host_url/sonar_token are GLOBAL Woodpecker secrets on this
+    # instance (shared with the other repos). coverage.lcov comes from the
+    # preceding "test" step (shared workspace within one pipeline run).
     image: sonarsource/sonar-scanner-cli@sha256:23ca0f137965d9dff2198074043fd48d386280bc5d0ccac8c8349cea4cf096a9
     environment:
       SONAR_HOST_URL:

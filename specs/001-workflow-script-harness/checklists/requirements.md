@@ -19,8 +19,8 @@ under "Original Content Quality Gates".
   `pipeline`, `parallel`, `phase`, `log`, `args`, `budget`.
 - [x] CHK003 Is the behavior for an agent label with zero scripted
   responses defined, distinct from a label whose responses are exhausted?
-  [Completeness, Spec FR-005] — spec distinguishes "geen (verder) gescript
-  antwoord beschikbaar", which covers both cases under one requirement;
+  [Completeness, Spec FR-005] — spec distinguishes "no (further) scripted
+  response available", which covers both cases under one requirement;
   the design docs (data-model.md, error-types.md) later split this into
   `MISSING_AGENT_RESPONSE` vs. `EXHAUSTED_AGENT_RESPONSES` — an
   implementation-level refinement, not a spec gap.
@@ -37,14 +37,14 @@ under "Original Content Quality Gates".
   acceptance scenarios define it operationally (overlap must be
   demonstrable, dependent stages must wait for their predecessor's
   result).
-- [x] CHK006 Is "duidelijke, bruikbare foutmelding" (clear, actionable
-  error) given a concrete, checkable meaning rather than left subjective?
-  [Clarity, Spec FR-010, FR-011, SC-005] — yes: SC-005 requires the error
-  to name the specific problem such that the cause is inferable without
-  reading harness source; FR-012/FR-013 add the harness-vs-script
-  distinction as a checkable property.
-- [x] CHK007 [Ambiguity, resolved as non-blocking] Is "een reeks opeenvolgende waarden" (an ordered
-  sequence of values) for `budget.spent()` explicit about what happens on
+- [x] CHK006 Is "clear, actionable error message" given a concrete,
+  checkable meaning rather than left subjective? [Clarity, Spec FR-010,
+  FR-011, SC-005] — yes: SC-005 requires the error to name the specific
+  problem such that the cause is inferable without reading harness source;
+  FR-012/FR-013 add the harness-vs-script distinction as a checkable
+  property.
+- [x] CHK007 [Ambiguity, resolved as non-blocking] Is "an ordered
+  sequence of values" for `budget.spent()` explicit about what happens on
   the FIRST call before any value has been "consumed" — i.e., is the
   sequence 0-indexed from the first call, with no special-cased initial
   state? — **Deferred**: FR-009 is clear enough for a reader to infer
@@ -108,8 +108,8 @@ under "Original Content Quality Gates".
 - [x] CHK015 Is the distinction between a script's own thrown error and a
   harness-classification error covered for the case where the script
   error occurs mid-concurrent-execution (inside `parallel()`)? [Edge Case
-  Coverage] — covered by the combination of the Edge Cases question ("een
-  gewone programmeerfout... wordt dat onderscheiden van een harness-fout")
+  Coverage] — covered by the combination of the Edge Cases question ("an
+  ordinary programming bug... is that distinguished from a harness error")
   and FR-012, without needing parallel()-specific special-casing at the
   spec level.
 
@@ -126,7 +126,7 @@ under "Original Content Quality Gates".
 - [x] CHK017 Does the spec avoid assuming a specific sandboxing mechanism
   (e.g., naming `vm.SourceTextModule` or any Node API) that would belong
   in plan.md? [Dependencies & Assumptions] — confirmed: spec.md's FRs are
-  phrased technology-agnostically ("een publieke functie die...", not
+  phrased technology-agnostically ("a public function that...", not
   naming `vm` or any Node API); only the quoted raw user input (Input
   field) names `runWorkflowScript`, which is expected/allowed.
 

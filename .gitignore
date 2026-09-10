@@ -1,5 +1,5 @@
 node_modules/
-.specify/dashboard.html
+.specify/
 coverage.lcov
 .env
 .env.*

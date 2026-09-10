@@ -21,7 +21,7 @@ warn_or_fail() {
         echo "FAIL: $1" >&2
         return 1
     fi
-    echo "WAARSCHUWING: $1 (CI dekt dit alsnog)." >&2
+    echo "WARNING: $1 (CI still covers this)." >&2
     return 0
 }
 
@@ -35,20 +35,20 @@ check_env_guard() {
     # looking git error.
     git config --global --add safe.directory "$(pwd)" 2>/dev/null || true
     if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        echo "FAIL: env-guard kan git niet gebruiken in deze directory (git rev-parse faalde)." >&2
+        echo "FAIL: env-guard cannot use git in this directory (git rev-parse failed)." >&2
         return 1
     fi
     if git ls-files | grep -E '(^|/)(\.env|\.env\.[a-z]+)$' | grep -v '\.env\.example$'; then
-        echo "FAIL: .env-bestand gevonden in git-tracked bestanden. Verwijder met git rm --cached <file>." >&2
+        echo "FAIL: .env file found among git-tracked files. Remove it with git rm --cached <file>." >&2
         return 1
     fi
-    echo "OK: geen .env in git-tracked bestanden."
+    echo "OK: no .env among git-tracked files."
 }
 
 check_gitleaks() {
     echo "==> gitleaks"
     if ! command -v gitleaks >/dev/null 2>&1; then
-        warn_or_fail "gitleaks niet geïnstalleerd, stap overgeslagen."
+        warn_or_fail "gitleaks not installed, step skipped."
         return $?
     fi
     if [ -n "${CI_PREV_COMMIT_SHA:-}" ]; then
@@ -62,15 +62,15 @@ check_sonarqube() {
     echo "==> sonarqube"
     : "${SONAR_HOST_URL:=http://localhost:9000}"
     if [ -z "${SONAR_TOKEN:-}" ]; then
-        warn_or_fail "SONAR_TOKEN niet gezet, sonarqube-check overgeslagen."
+        warn_or_fail "SONAR_TOKEN not set, sonarqube check skipped."
         return $?
     fi
     if ! command -v sonar-scanner >/dev/null 2>&1; then
-        warn_or_fail "sonar-scanner niet geïnstalleerd, sonarqube-check overgeslagen."
+        warn_or_fail "sonar-scanner not installed, sonarqube check skipped."
         return $?
     fi
     if [ "$STRICT" -ne 1 ] && ! curl -sS -o /dev/null -m 2 "$SONAR_HOST_URL/api/system/status" 2>/dev/null; then
-        warn_or_fail "SonarQube ($SONAR_HOST_URL) niet bereikbaar, sonarqube-check overgeslagen."
+        warn_or_fail "SonarQube ($SONAR_HOST_URL) unreachable, sonarqube check skipped."
         return $?
     fi
     export SONAR_HOST_URL SONAR_TOKEN
@@ -88,13 +88,13 @@ case "$CHECK" in
         check_sonarqube || FAIL=1
         ;;
     *)
-        echo "Onbekende check: $CHECK (verwacht: env-guard|gitleaks|sonarqube|all)" >&2
+        echo "Unknown check: $CHECK (expected: env-guard|gitleaks|sonarqube|all)" >&2
         exit 2
         ;;
 esac
 
 if [ "$FAIL" -ne 0 ]; then
-    echo "==> local-ci-checks.sh: gefaald, zie hierboven." >&2
+    echo "==> local-ci-checks.sh: failed, see above." >&2
     exit 1
 fi
-echo "==> local-ci-checks.sh geslaagd (zie eventuele waarschuwingen over overgeslagen stappen hierboven)."
+echo "==> local-ci-checks.sh passed (see any warnings above about skipped steps)."

@@ -2,49 +2,49 @@
 
 ## What
 
-Een generieke, herbruikbare test-harness voor scripts geschreven tegen Claude
-Code's Workflow-tool-DSL (`agent()`, `pipeline()`, `parallel()`, `phase()`,
-`log()`, `args`, `budget`). De harness bootst de sandbox-runtime van de
-Workflow-tool na via Node's `vm`-module, zodat een workflow-script ongewijzigd
-— zonder enige aanpassing aan het scriptbestand zelf — buiten Claude Code om
-uitgevoerd en getest kan worden onder `node:test`.
+A generic, reusable test harness for scripts written against Claude Code's
+Workflow-tool DSL (`agent()`, `pipeline()`, `parallel()`, `phase()`, `log()`,
+`args`, `budget`). The harness reproduces the Workflow tool's sandbox
+runtime via Node's `vm` module, so a workflow-script can be run and tested
+unmodified — with no change to the script file itself — outside Claude Code,
+under `node:test`.
 
 ## Who
 
-Auteurs van Workflow-tool-scripts (mensen en agents) die zulke scripts willen
-schrijven, verifiëren en regressietesten vóór ze ze in een echte Claude Code
-sessie draaien. Eerste concrete afnemer: het `content-os` project, dat
-`.claude/workflows/session-design-method.js` wil testen via deze harness als
-devDependency.
+Authors of Workflow-tool scripts (humans and agents) who want to write,
+verify, and regression-test such scripts before running them in a real
+Claude Code session. First concrete consumer: the `content-os` project,
+which tests `.claude/workflows/session-design-method.js` via this harness
+as a devDependency.
 
 ## Why
 
-Workflow-tool-scripts draaien in een sandbox zonder Node-API's en zonder
-`Date.now()`/`Math.random()`/`new Date()`, en orkestreren concurrency via
-`agent()`/`pipeline()`/`parallel()`. Er bestaat geen manier om zo'n script
-lokaal, deterministisch en snel te testen zonder een echte Claude Code sessie
-te starten — elke wijziging moet nu handmatig in productie gevalideerd
-worden. Dat is traag, niet reproduceerbaar, en maakt TDD op workflow-scripts
-onmogelijk. Deze harness lost dat op met een node:test-bruikbare mock van de
-runtime.
+Workflow-tool scripts run in a sandbox with no Node APIs and no
+`Date.now()`/`Math.random()`/`new Date()`, and orchestrate concurrency via
+`agent()`/`pipeline()`/`parallel()`. There is no way to test such a script
+locally, deterministically, and quickly without starting a real Claude Code
+session — today every change has to be validated manually in production.
+That's slow, not reproducible, and makes TDD on workflow-scripts impossible.
+This harness solves that with a `node:test`-usable mock of the runtime.
 
 ## Domain
 
-Test-infrastructuur / developer tooling voor Claude Code's Workflow-tool-DSL.
-Kernbegrippen: **workflow-script** (de geteste broncode, ongewijzigd), **sandbox
-runtime** (de Node `vm`-context zonder Node-API's), **agent()-antwoord**
-(gescripte respons per label/volgorde, inclusief null-simulatie voor gefaalde
-agent-calls), **budget** (`budget.total`/`budget.spent()`, scriptbaar per
-test), **concurrency-semantiek** van `parallel()`/`pipeline()` (échte
-gelijktijdigheid, niet enkel sequentieel gesimuleerd).
+Test infrastructure / developer tooling for Claude Code's Workflow-tool DSL.
+Core concepts: **workflow-script** (the code under test, unmodified),
+**sandbox runtime** (the Node `vm` context with no Node APIs),
+**agent() response** (a scripted response per label/call order, including a
+null simulation for a failed agent call), **budget**
+(`budget.total`/`budget.spent()`, scriptable per test), **concurrency
+semantics** of `parallel()`/`pipeline()` (genuine concurrency, not merely
+simulated sequentially).
 
 ## Scope
 
-**In scope:** de publieke API `runWorkflowScript(scriptText, {agentResponses,
-args, budget})` in `src/harness.js`, de bijhorende tests in
-`test/harness.test.js`, en BDD `.feature`-bestanden die het gedrag van de
-harness zelf vastleggen (niet van individuele workflow-scripts).
+**In scope:** the public API `runWorkflowScript(scriptText, {agentResponses,
+args, budget})` in `src/harness.js`, its accompanying tests in
+`test/harness.test.js`, and the BDD `.feature` files that capture the
+harness's own behavior (not that of individual workflow-scripts).
 
-**Out of scope:** het uitvoeren van workflow-scripts tegen een echte Claude
-Code sessie of echte agents; het bouwen van nieuwe Workflow-tool-DSL-functies;
-ondersteuning voor andere sandbox-achtige DSL's dan de Workflow-tool.
+**Out of scope:** running workflow-scripts against a real Claude Code
+session or real agents; building new Workflow-tool DSL functions; support
+for sandbox-like DSLs other than the Workflow tool.

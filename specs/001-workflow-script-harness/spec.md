@@ -4,291 +4,281 @@
 **Created**: 2026-09-09
 **Status**: Draft
 **Input**: User description: "Feature: workflow-script-test-harness. User
-stories in de vorm 'als workflow-scriptauteur wil ik X kunnen
-scripten/verifiëren'. Kerncapaciteiten om te dekken: (1) een workflow-script
-ongewijzigd laten draaien tegen een gemockte sandbox-runtime (agent(),
-pipeline(), parallel(), phase(), log(), args, budget) via
-runWorkflowScript(scriptText, opties); (2) per label/volgorde scriptbare
-agent()-antwoorden kunnen opgeven, inclusief het simuleren van een
-null/mislukte agent-respons; (3) échte concurrency verifiëren in
-parallel()/pipeline() — niet enkel doen-alsof-sequentieel; (4) budget.total
-en budget.spent() scriptbaar maken vanuit de testopstelling; (5) duidelijke,
-bruikbare foutmeldingen wanneer het geteste script verboden Node-API's of
-niet-deterministische primitieven (Date.now(), Math.random(), new Date())
-aanroept."
+stories in the form 'as a workflow-script author I want to be able to
+script/verify X'. Core capabilities to cover: (1) running a workflow-script
+unmodified against a mocked sandbox runtime (agent(), pipeline(), parallel(),
+phase(), log(), args, budget) via runWorkflowScript(scriptText, options);
+(2) being able to script agent() responses per label/order, including
+simulating a null/failed agent response; (3) verifying genuine concurrency
+in parallel()/pipeline() — not merely pretending to be sequential;
+(4) making budget.total and budget.spent() scriptable from the test setup;
+(5) clear, actionable error messages when the script under test calls
+forbidden Node APIs or non-deterministic primitives (Date.now(),
+Math.random(), new Date())."
 
 ## User Stories *(mandatory)*
 
 ### User Story 1 - Run a workflow-script unmodified (Priority: P1)
 
-Als workflow-scriptauteur wil ik mijn workflow-script ongewijzigd tegen een
-gemockte sandbox-runtime kunnen laten draaien, zodat ik het gedrag van het
-script kan verifiëren zonder het aan te passen voor testdoeleinden en zonder
-een echte sessie te starten.
+As a workflow-script author, I want to run my workflow-script unmodified
+against a mocked sandbox runtime, so that I can verify the script's behavior
+without adapting it for testing purposes and without starting a real
+session.
 
-**Why this priority**: zonder dit is er geen harness — elke andere
-capaciteit bouwt hierop voort. Dit is de minimale bruikbare eenheid: een
-script indienen en een resultaat terugkrijgen.
+**Why this priority**: without this there is no harness — every other
+capability builds on it. This is the minimal usable unit: submit a script
+and get a result back.
 
-**Independent Test**: kan volledig getest worden door een eenvoudig
-workflow-script (dat `agent()`, `log()` en `args` gebruikt, geen complexe
-orchestratie) aan de harness te geven en te verifiëren dat het script
-draait tot het einde en het verwachte resultaat oplevert, zonder dat het
-scriptbestand zelf is aangepast.
+**Independent Test**: can be fully tested by handing the harness a simple
+workflow-script (one that uses `agent()`, `log()`, and `args`, no complex
+orchestration) and verifying that the script runs to completion and
+produces the expected result, without the script file itself being
+modified.
 
 **Acceptance Scenarios**:
 
-1. **Given** een geldig workflow-script dat `args` uitleest en één
-   `agent()`-aanroep doet, **When** het script via de harness wordt
-   uitgevoerd, **Then** levert de harness het returnwaarde van het script
-   terug zonder foutmelding.
-2. **Given** hetzelfde scriptbestand, **When** het zowel via de harness als
-   (hypothetisch) via de echte Workflow-tool-sandbox wordt aangeboden,
-   **Then** vereist geen van beide een aanpassing aan het scriptbestand.
-3. **Given** een script dat een DSL-functie gebruikt die de harness niet
-   ondersteunt, **When** het script wordt uitgevoerd, **Then** krijgt de
-   auteur een duidelijke foutmelding die de onbekende functie benoemt,
-   in plaats van een stille no-op of een onbegrijpelijke crash.
+1. **Given** a valid workflow-script that reads `args` and makes one
+   `agent()` call, **When** the script is run through the harness,
+   **Then** the harness returns the script's return value with no error.
+2. **Given** the same script file, **When** it is submitted both to the
+   harness and (hypothetically) to the real Workflow-tool sandbox, **Then**
+   neither requires any change to the script file.
+3. **Given** a script that uses a DSL function the harness does not
+   support, **When** the script is run, **Then** the author gets a clear
+   error message naming the unknown function, instead of a silent no-op or
+   an incomprehensible crash.
 
 ---
 
-### User Story 2 - Scripten van agent()-antwoorden, incl. mislukking (Priority: P2)
+### User Story 2 - Scripting agent() responses, including failure (Priority: P2)
 
-Als workflow-scriptauteur wil ik per label en per volgorde kunnen bepalen
-welk antwoord een `agent()`-aanroep in mijn script krijgt — inclusief het
-simuleren van een mislukte of lege (`null`) agent-respons — zodat ik zowel
-het gelukkige pad als foutafhandeling in mijn script kan verifiëren.
+As a workflow-script author, I want to determine, per label and per call
+order, what response an `agent()` call in my script receives — including
+simulating a failed or empty (`null`) agent response — so that I can verify
+both the happy path and error handling in my script.
 
-**Why this priority**: zonder scriptbare antwoorden is elke test beperkt tot
-"het script draait", nooit tot "het script reageert correct op wat de agent
-teruggeeft" — dat is de kern van wat een test van orchestratielogica moet
-kunnen aantonen.
+**Why this priority**: without scriptable responses, every test is limited
+to "the script runs", never to "the script reacts correctly to what the
+agent returns" — that is the core of what a test of orchestration logic
+needs to demonstrate.
 
-**Independent Test**: kan volledig getest worden door voor een gegeven
-label een reeks antwoorden op te geven (inclusief één `null`-antwoord) en te
-verifiëren dat opeenvolgende `agent()`-aanroepen met dat label die
-antwoorden in de opgegeven volgorde ontvangen, en dat het script zijn
-foutafhandelingspad neemt wanneer het `null`-antwoord aan de beurt is.
+**Independent Test**: can be fully tested by supplying a sequence of
+responses for a given label (including one `null` response) and verifying
+that successive `agent()` calls with that label receive those responses in
+the given order, and that the script takes its error-handling path when
+the `null` response comes up.
 
 **Acceptance Scenarios**:
 
-1. **Given** een test die voor label `"reviewer"` de antwoorden
-   `[A, B]` in die volgorde opgeeft, **When** het script tweemaal
-   `agent()` met label `"reviewer"` aanroept, **Then** ontvangt de eerste
-   aanroep `A` en de tweede `B`.
-2. **Given** een test die voor een label een `null`-antwoord opgeeft op de
-   tweede positie, **When** het script die tweede aanroep doet, **Then**
-   simuleert de harness een mislukte/lege agent-respons en kan het script
-   zijn eigen foutafhandeling daarop laten reageren.
-3. **Given** een script dat een label meer keren aanroept dan er
-   gescripte antwoorden voor zijn opgegeven, **When** de extra aanroep
-   plaatsvindt, **Then** geeft de harness een duidelijke, diagnosticeerbare
-   fout — geen stille `undefined` en geen crash zonder context.
+1. **Given** a test that supplies responses `[A, B]` in that order for
+   label `"reviewer"`, **When** the script calls `agent()` with label
+   `"reviewer"` twice, **Then** the first call receives `A` and the second
+   receives `B`.
+2. **Given** a test that supplies a `null` response at the second position
+   for a label, **When** the script makes that second call, **Then** the
+   harness simulates a failed/empty agent response and the script's own
+   error handling can react to it.
+3. **Given** a script that calls a label more times than there are scripted
+   responses for it, **When** the extra call is made, **Then** the harness
+   produces a clear, diagnosable error — no silent `undefined` and no crash
+   without context.
 
 ---
 
-### User Story 3 - Verifiëren van échte concurrency (Priority: P3)
+### User Story 3 - Verifying genuine concurrency (Priority: P3)
 
-Als workflow-scriptauteur wil ik kunnen verifiëren dat `parallel()` en
-`pipeline()` in mijn script daadwerkelijk gelijktijdig uitvoeren waar het
-script dat verwacht, zodat ordering- of race-defecten aan het licht komen
-die bij een louter sequentiële simulatie onopgemerkt zouden blijven.
+As a workflow-script author, I want to be able to verify that `parallel()`
+and `pipeline()` in my script actually execute concurrently where the
+script expects it, so that ordering or race defects come to light that
+would go unnoticed under a merely sequential simulation.
 
-**Why this priority**: dit is de moeilijkste en meest risicovolle categorie
-verifiëren, maar minder vaak de eerste barrière dan P1/P2 — een auteur kan
-al waarde uit de harness halen zonder dit, al is de dekking dan onvolledig
-voor scripts die op concurrency-semantiek leunen.
+**Why this priority**: this is the hardest and highest-risk category to
+verify, but a less frequent first barrier than P1/P2 — an author can
+already get value from the harness without this, though coverage remains
+incomplete for scripts that rely on concurrency semantics.
 
-**Independent Test**: kan volledig getest worden door een script te geven
-dat meerdere taken aan `parallel()` meegeeft, elk met een eigen
-gescripte agent-vertraging/volgorde, en te verifiëren dat de harness kan
-aantonen dat die taken overlappend (niet strikt na elkaar) zijn uitgevoerd.
+**Independent Test**: can be fully tested by supplying a script that hands
+multiple tasks to `parallel()`, each with its own scripted agent
+delay/order, and verifying that the harness can demonstrate that those
+tasks executed overlapping in time (not strictly one after another).
 
 **Acceptance Scenarios**:
 
-1. **Given** een script dat drie taken aan `parallel()` meegeeft, **When**
-   het script wordt uitgevoerd, **Then** kan de test aantonen dat minstens
-   twee van die taken gelijktijdig in uitvoering waren, niet enkel na
-   elkaar.
-2. **Given** een script dat `pipeline()` gebruikt om stappen na elkaar te
-   laten lopen, **When** het script wordt uitgevoerd, **Then** verifieert de
-   harness dat elke stap pas start nadat de vorige stap zijn resultaat heeft
-   opgeleverd (correcte volgordelijkheid), terwijl onafhankelijke taken
-   binnen eenzelfde stap wél gelijktijdig mogen lopen.
-3. **Given** een script waarin een taak binnen `parallel()` faalt, **When**
-   het script wordt uitgevoerd, **Then** kan de test verifiëren of en hoe
-   dat de overige, gelijktijdig lopende taken beïnvloedt, conform het
-   gedrag van de echte Workflow-tool.
+1. **Given** a script that hands three tasks to `parallel()`, **When** the
+   script is run, **Then** the test can demonstrate that at least two of
+   those tasks were in flight at the same time, not merely one after
+   another.
+2. **Given** a script that uses `pipeline()` to run steps in sequence,
+   **When** the script is run, **Then** the harness verifies that each step
+   only starts after the previous step has produced its result (correct
+   ordering), while independent tasks within the same step are allowed to
+   run concurrently.
+3. **Given** a script in which a task inside `parallel()` fails, **When**
+   the script is run, **Then** the test can verify whether and how that
+   affects the other, concurrently running tasks, consistent with the real
+   Workflow tool's behavior.
 
 ---
 
-### User Story 4 - Scripten van budget (Priority: P4)
+### User Story 4 - Scripting budget (Priority: P4)
 
-Als workflow-scriptauteur wil ik `budget.total` en het gedrag van
-`budget.spent()` vanuit mijn test kunnen instellen, zodat ik kan verifiëren
-hoe mijn script reageert wanneer een budgetgrens nadert of overschreden
-wordt.
+As a workflow-script author, I want to set `budget.total` and the behavior
+of `budget.spent()` from my test, so that I can verify how my script
+reacts as a budget limit approaches or is exceeded.
 
-**Why this priority**: budgetbewust gedrag is een reëel onderdeel van
-workflow-scripts, maar raakt een kleiner deel van scripts dan agent-respons-
-of concurrency-gedrag — vandaar lager dan P2/P3.
+**Why this priority**: budget-aware behavior is a real part of
+workflow-scripts, but touches a smaller share of scripts than agent-response
+or concurrency behavior — hence lower than P2/P3.
 
-**Independent Test**: kan volledig getest worden door een test op te
-zetten met een vast `budget.total` en een gescripte reeks waarden voor
-`budget.spent()`, en te verifiëren dat het script zijn budget-afhankelijke
-vertakking (bv. stoppen, afschalen) op het juiste moment neemt.
+**Independent Test**: can be fully tested by setting up a test with a fixed
+`budget.total` and a scripted sequence of values for `budget.spent()`, and
+verifying that the script takes its budget-dependent branch (e.g. stop,
+scale down) at the correct moment.
 
 **Acceptance Scenarios**:
 
-1. **Given** een test die `budget.total` op een vaste waarde zet, **When**
-   het script die waarde uitleest, **Then** komt de teruggegeven waarde
-   overeen met wat de test heeft opgegeven.
-2. **Given** een test die een reeks opeenvolgende waarden voor
-   `budget.spent()` scriptbaar heeft gemaakt, **When** het script
-   `budget.spent()` meermaals aanroept, **Then** ontvangt elke aanroep de
-   eerstvolgende gescripte waarde in die reeks.
+1. **Given** a test that sets `budget.total` to a fixed value, **When** the
+   script reads that value, **Then** the value returned matches what the
+   test supplied.
+2. **Given** a test that has scripted an ordered sequence of values for
+   `budget.spent()`, **When** the script calls `budget.spent()` multiple
+   times, **Then** each call receives the next scripted value in that
+   sequence.
 
 ---
 
-### User Story 5 - Duidelijke fouten bij verboden aanroepen (Priority: P5)
+### User Story 5 - Clear errors on forbidden calls (Priority: P5)
 
-Als workflow-scriptauteur wil ik een duidelijke, bruikbare foutmelding
-krijgen wanneer mijn script een Node-API of een niet-deterministische
-primitief (`Date.now()`, `Math.random()`, `new Date()`) aanroept die in de
-echte sandbox verboden is, zodat ik zulke fouten al lokaal opspoor in plaats
-van pas wanneer het script in een echte sessie faalt.
+As a workflow-script author, I want a clear, actionable error message when
+my script calls a Node API or a non-deterministic primitive (`Date.now()`,
+`Math.random()`, `new Date()`) that is forbidden in the real sandbox, so
+that I catch such errors locally instead of only when the script fails in
+a real session.
 
-**Why this priority**: dit is een verificatiecapaciteit die andere
-capaciteiten aanvult (het beschermt de betrouwbaarheid van P1-P4), maar op
-zichzelf geen nieuw scriptgedrag test — vandaar de laagste prioriteit,
-al is de aanwezigheid ervan wel bepalend voor het vertrouwen in elke andere
-test.
+**Why this priority**: this is a verification capability that complements
+the others (it protects the reliability of P1-P4), but does not itself
+test new script behavior — hence the lowest priority, though its presence
+is what makes every other test trustworthy.
 
-**Independent Test**: kan volledig getest worden door een script te geven
-dat `Date.now()` (of een vergelijkbare verboden primitief) aanroept, en te
-verifiëren dat de harness dit tegenhoudt met een foutmelding die expliciet
-de verboden aanroep benoemt.
+**Independent Test**: can be fully tested by supplying a script that calls
+`Date.now()` (or a comparable forbidden primitive) and verifying that the
+harness blocks it with an error message that explicitly names the
+forbidden call.
 
 **Acceptance Scenarios**:
 
-1. **Given** een script dat `Date.now()` aanroept, **When** het script
-   wordt uitgevoerd, **Then** faalt de uitvoering met een foutmelding die
-   `Date.now()` expliciet als oorzaak benoemt.
-2. **Given** een script dat `Math.random()` of `new Date()` aanroept,
-   **When** het script wordt uitgevoerd, **Then** faalt de uitvoering op
-   dezelfde, herkenbare manier.
-3. **Given** een script dat een Node-only API aanroept (bv. bestandssysteem-
-   of netwerktoegang buiten de DSL om), **When** het script wordt
-   uitgevoerd, **Then** faalt de uitvoering met een foutmelding die
-   duidelijk maakt dat die aanroep buiten de sandbox valt.
+1. **Given** a script that calls `Date.now()`, **When** the script is run,
+   **Then** execution fails with an error message that explicitly names
+   `Date.now()` as the cause.
+2. **Given** a script that calls `Math.random()` or `new Date()`, **When**
+   the script is run, **Then** execution fails in the same, recognizable
+   way.
+3. **Given** a script that calls a Node-only API (e.g. filesystem or
+   network access outside the DSL), **When** the script is run, **Then**
+   execution fails with an error message that makes clear that call falls
+   outside the sandbox.
 
 ### Edge Cases
 
-- Wat gebeurt er als het script `agent()` aanroept met een label waarvoor
-  helemaal geen antwoorden zijn gescript?
-- Wat gebeurt er als `parallel()` een lege lijst taken meekrijgt?
-- Wat gebeurt er als `pipeline()` met nul stappen wordt aangeroepen?
-- Wat gebeurt er als het script zelf een fout gooit (niet via een verboden
-  API, maar een gewone programmeerfout) — wordt dat onderscheiden van een
-  harness-fout?
-- Wat gebeurt er als `budget.spent()` vaker wordt aangeroepen dan er
-  gescripte waarden zijn opgegeven?
-- Elke aanroep van de harness-functie is stateless: de gescripte
-  agent-antwoorden en het budgetscript gelden enkel voor die ene aanroep
-  en worden niet gedeeld tussen aanroepen. Een auteur die dezelfde
-  scripttekst met andere gescripte antwoorden wil hertesten, doet dat via
-  een nieuwe, onafhankelijke aanroep — niet door state binnen één aanroep
-  te hergebruiken.
+- What happens when the script calls `agent()` with a label for which no
+  responses have been scripted at all?
+- What happens when `parallel()` is given an empty list of tasks?
+- What happens when `pipeline()` is called with zero stages?
+- What happens when the script itself throws an error (not via a
+  forbidden API, but an ordinary programming bug) — is that distinguished
+  from a harness error?
+- What happens when `budget.spent()` is called more times than there are
+  scripted values?
+- Every call to the harness function is stateless: the scripted agent
+  responses and the budget script apply only to that one call and are not
+  shared across calls. An author who wants to re-test the same script text
+  with different scripted responses does so via a new, independent call —
+  not by reusing state within a single call.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: De harness MUST een workflow-script ongewijzigd (zonder
-  aanpassing aan het scriptbestand) kunnen uitvoeren via een publieke
-  functie die de scripttekst en testopties aanneemt en het resultaat van
-  het script teruggeeft.
-- **FR-002**: De harness MUST binnen het geteste script de DSL-primitieven
-  `agent()`, `pipeline()`, `parallel()`, `phase()`, `log()`, `args` en
-  `budget` beschikbaar stellen met een voor het script niet-onderscheidbaar
-  gedrag t.o.v. de echte sandbox-runtime.
-- **FR-003**: De testopstelling MUST toelaten om, per label en per
-  volgorde van aanroep, het antwoord van een `agent()`-aanroep vooraf vast
-  te leggen.
-- **FR-004**: De testopstelling MUST toelaten om voor een specifieke
-  aanroep een `null`/mislukte agent-respons te simuleren, zodat het
-  geteste script zijn foutafhandelingspad kan doorlopen.
-- **FR-005**: Wanneer het script een `agent()`-aanroep doet voor een label
-  waarvoor geen (verder) gescript antwoord beschikbaar is, MUST de harness
-  dit signaleren met een duidelijke, diagnosticeerbare fout in plaats van
-  een stille of onduidelijke uitkomst.
-- **FR-006**: De harness MUST bij `parallel()` en bij onafhankelijke
-  stappen binnen `pipeline()` daadwerkelijke gelijktijdige uitvoering
-  vertonen, verifieerbaar vanuit de test — geen sequentiële simulatie die
-  zich enkel als gelijktijdig voordoet.
-- **FR-007**: De harness MUST bij `pipeline()` de volgordelijkheid tussen
-  afhankelijke stappen waarborgen: een stap start pas nadat de voorgaande
-  stap zijn resultaat heeft opgeleverd.
-- **FR-008**: De testopstelling MUST toelaten om `budget.total` op een
-  vaste waarde te zetten, zichtbaar voor het geteste script.
-- **FR-009**: De testopstelling MUST toelaten om een reeks opeenvolgende
-  waarden voor `budget.spent()` te scripten, die bij opeenvolgende
-  aanroepen in die volgorde worden teruggegeven.
-- **FR-010**: Wanneer het geteste script een niet-deterministische
-  primitief aanroept die in de echte sandbox verboden is (met inbegrip van,
-  maar niet beperkt tot, wall-clock tijd en willekeur), MUST de harness de
-  uitvoering laten falen met een foutmelding die de specifieke verboden
-  aanroep benoemt.
-- **FR-011**: Wanneer het geteste script een host-capaciteit aanroept die
-  buiten de DSL en buiten de sandbox valt, MUST de harness de uitvoering
-  laten falen met een foutmelding die duidelijk maakt dat die aanroep
-  buiten de toegestane omgeving valt.
-- **FR-012**: De harness MUST een fout die het geteste script zelf
-  opwerpt (een gewone programmeerfout in het script) onderscheidbaar
-  teruggeven van een fout die de harness zelf signaleert (bv. verboden
-  aanroep, ontbrekend gescript antwoord) — de auteur moet uit de fout
-  kunnen afleiden of het script of de testopstelling de oorzaak is.
-- **FR-013**: Wanneer het geteste script een functie aanroept die geen deel
-  uitmaakt van de ondersteunde DSL-primitieven (`agent`, `pipeline`,
-  `parallel`, `phase`, `log`, `args`, `budget`), MUST de harness dit
-  signaleren met een duidelijke fout die de onbekende functienaam benoemt,
-  in plaats van een stille `undefined`-aanroep of een onbegrijpelijke
-  crash (zie User Story 1, acceptatiescenario 3).
+- **FR-001**: The harness MUST be able to run a workflow-script unmodified
+  (no change to the script file) via a public function that accepts the
+  script text and test options and returns the script's result.
+- **FR-002**: The harness MUST expose the DSL primitives `agent()`,
+  `pipeline()`, `parallel()`, `phase()`, `log()`, `args`, and `budget`
+  inside the script under test, with behavior indistinguishable to the
+  script from the real sandbox runtime.
+- **FR-003**: The test setup MUST allow the response of an `agent()` call
+  to be fixed in advance, per label and per call order.
+- **FR-004**: The test setup MUST allow simulating a `null`/failed agent
+  response for a specific call, so that the script under test can exercise
+  its error-handling path.
+- **FR-005**: When the script makes an `agent()` call for a label for
+  which no (further) scripted response is available, the harness MUST
+  signal this with a clear, diagnosable error instead of a silent or
+  unclear outcome.
+- **FR-006**: The harness MUST exhibit genuine concurrent execution for
+  `parallel()` and for independent steps within `pipeline()`, verifiable
+  from the test — not a sequential simulation that merely presents itself
+  as concurrent.
+- **FR-007**: The harness MUST guarantee ordering between dependent steps
+  in `pipeline()`: a step only starts after the preceding step has produced
+  its result.
+- **FR-008**: The test setup MUST allow `budget.total` to be set to a
+  fixed value, visible to the script under test.
+- **FR-009**: The test setup MUST allow scripting an ordered sequence of
+  values for `budget.spent()`, returned in that order on successive calls.
+- **FR-010**: When the script under test calls a non-deterministic
+  primitive that is forbidden in the real sandbox (including, but not
+  limited to, wall-clock time and randomness), the harness MUST fail
+  execution with an error message that names the specific forbidden call.
+- **FR-011**: When the script under test calls a host capability that
+  falls outside the DSL and outside the sandbox, the harness MUST fail
+  execution with an error message that makes clear that call falls outside
+  the allowed environment.
+- **FR-012**: The harness MUST return an error thrown by the script itself
+  (an ordinary programming bug in the script) distinguishably from an
+  error the harness itself signals (e.g. forbidden call, missing scripted
+  response) — the author must be able to tell from the error whether the
+  script or the test setup is the cause.
+- **FR-013**: When the script under test calls a function that is not
+  part of the supported DSL primitives (`agent`, `pipeline`, `parallel`,
+  `phase`, `log`, `args`, `budget`), the harness MUST signal this with a
+  clear error naming the unknown function, instead of a silent
+  `undefined` call or an incomprehensible crash (see User Story 1,
+  acceptance scenario 3).
 
 ### Key Entities *(include if feature involves data)*
 
-- **Workflow-script**: de geteste broncode; een tekstuele bron die de
-  DSL-primitieven gebruikt en ongewijzigd aan de harness wordt aangeboden.
-- **Agent-antwoord-script**: een per label geordende reeks vooraf
-  vastgelegde antwoorden (of een `null`-marker voor een mislukte respons)
-  die de harness aan opeenvolgende `agent()`-aanroepen met dat label
-  toekent.
-- **Budgetscript**: een vooraf vastgelegde `total`-waarde plus een
-  geordende reeks waarden voor opeenvolgende `spent()`-aanroepen.
-- **Uitvoeringsresultaat**: wat de harness teruggeeft na afloop van een
-  scriptuitvoering — het returnwaarde van het script bij welslagen, of een
-  gestructureerde fout (met duidelijke bron: script vs. harness) bij falen.
+- **Workflow-script**: the code under test; a text source that uses the
+  DSL primitives and is submitted to the harness unmodified.
+- **Agent-response script**: an ordered, per-label sequence of
+  pre-recorded responses (or a `null` marker for a failed response) that
+  the harness assigns to successive `agent()` calls with that label.
+- **Budget script**: a pre-recorded `total` value plus an ordered sequence
+  of values for successive `spent()` calls.
+- **Execution result**: what the harness returns after a script run
+  completes — the script's return value on success, or a structured error
+  (with a clear source: script vs. harness) on failure.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Een workflow-script dat al in de echte Workflow-tool-sandbox
-  draait, vereist in 100% van de geteste gevallen geen enkele aanpassing
-  om ook onder de harness te draaien.
-- **SC-002**: Een auteur kan voor elk van de vijf kerncapaciteiten (script
-  draaien, agent-antwoorden scripten incl. mislukking, concurrency
-  verifiëren, budget scripten, verboden-aanroep-detectie) een geslaagde
-  test schrijven zonder de broncode van de harness zelf te hoeven lezen —
-  enkel op basis van de publieke API en foutmeldingen.
-- **SC-003**: Een gescripte `null`-agent-respons leidt in 100% van de
-  gevallen tot een voor de test waarneembaar foutafhandelingspad in het
-  script, nooit tot een stille crash van de harness zelf.
-- **SC-004**: Een test die gelijktijdige uitvoering binnen `parallel()`
-  verwacht, kan dat aantonen op basis van waarneembare overlap tussen
-  taken — niet enkel op basis van de eindvolgorde van resultaten, die ook
-  bij toeval sequentieel gelijk zou kunnen ogen.
-- **SC-005**: Elke foutmelding die de harness zelf produceert (verboden
-  aanroep, ontbrekend gescript antwoord, onbekende DSL-functie) benoemt
-  expliciet wat er misging, zodat een auteur zonder de harness-broncode
-  te raadplegen de oorzaak kan achterhalen.
+- **SC-001**: A workflow-script that already runs in the real Workflow-tool
+  sandbox requires no change whatsoever to also run under the harness, in
+  100% of tested cases.
+- **SC-002**: For each of the five core capabilities (running a script,
+  scripting agent responses including failure, verifying concurrency,
+  scripting budget, forbidden-call detection), an author can write a
+  passing test without needing to read the harness's own source code —
+  based solely on the public API and error messages.
+- **SC-003**: A scripted `null` agent response leads to a test-observable
+  error-handling path in the script in 100% of cases, never to a silent
+  crash of the harness itself.
+- **SC-004**: A test that expects concurrent execution within `parallel()`
+  can demonstrate it based on observable overlap between tasks — not
+  merely on the final ordering of results, which could also look
+  sequential by coincidence.
+- **SC-005**: Every error message the harness itself produces (forbidden
+  call, missing scripted response, unknown DSL function) explicitly names
+  what went wrong, so that an author can determine the cause without
+  consulting the harness's source code.
