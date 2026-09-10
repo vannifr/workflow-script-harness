@@ -409,3 +409,36 @@ test('T031: a failing thunk inside parallel() produces a ParallelError with comp
   assert.strictEqual(result.error.originalError.failed.length, 1);
   assert.strictEqual(result.error.originalError.completed.length, 1);
 });
+
+// Regression: discovered by running a real production workflow-script
+// (content-os's session-design-method.js, which does
+// `new Set(args.frozenArtifacts || [])`) against this harness — a
+// standard, safe, deterministic ES built-in (Set) was rejected as
+// UNKNOWN_GLOBAL. Only Date/Math/require/etc. (host access or
+// non-determinism) should ever be blocked; ordinary language built-ins
+// must be usable, or the harness is unusable for any real script beyond
+// a toy example.
+test('regression: standard ES built-ins (Set, Map, JSON, Array, Object, Promise, Error subtypes) are usable inside the sandbox', async () => {
+  const script = `
+    export const meta = { name: 'builtins-test', phases: [] };
+    const s = new Set([1, 2, 2, 3]);
+    const m = new Map([['a', 1]]);
+    const json = JSON.stringify({ a: 1, arr: Array.from(s) });
+    const parsed = JSON.parse(json);
+    const isArr = Array.isArray(parsed.arr);
+    const p = await Promise.resolve('resolved');
+    let caught = null;
+    try { throw new TypeError('deliberate'); } catch (e) { caught = e.message; }
+    export default { setSize: s.size, mapGet: m.get('a'), parsedA: parsed.a, isArr, p, caught };
+  `;
+  const result = await runWorkflowScript(script, {});
+  assert.strictEqual(result.status, 'success', JSON.stringify(result.error));
+  assert.deepEqual(result.value, {
+    setSize: 3,
+    mapGet: 1,
+    parsedA: 1,
+    isArr: true,
+    p: 'resolved',
+    caught: 'deliberate',
+  });
+});

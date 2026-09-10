@@ -177,6 +177,25 @@ function parseMeta(scriptText) {
 // (confirmed empirically) because the property already exists when the
 // script accesses it, rather than being synthesized reactively inside
 // this trap.
+// Standard ECMAScript built-ins that are safe to expose: deterministic,
+// no host/filesystem/network access, no wall-clock/randomness. Without
+// these, only the DSL primitives are reachable and no real script can do
+// basic data manipulation (JSON, Set/Map, Promise, throwing/catching a
+// plain Error) — discovered by running an actual production
+// workflow-script against this harness, not by inspection: it used
+// `new Set(...)`, which correctly should NOT be forbidden (unlike
+// Date/Math/etc. in FORBIDDEN_PRIMITIVES below). Deliberately excludes
+// `Function`, `eval`, `WebAssembly`, `globalThis` — those ARE genuine
+// dynamic-code/escape vectors, left unreachable (falls through to
+// UNKNOWN_GLOBAL) rather than allowed.
+const SAFE_ES_BUILTINS = {
+  Object, Array, JSON, Set, Map, WeakMap, WeakSet, Promise,
+  String, Number, Boolean, Symbol, RegExp, Reflect,
+  Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError,
+  isNaN, isFinite, parseInt, parseFloat,
+  encodeURIComponent, decodeURIComponent, encodeURI, decodeURI,
+};
+
 // Explicitly forbidden host/non-deterministic globals (FR-010/FR-011).
 // `console` is deliberately NOT in this list: it is exercised by an
 // earlier, already-passing test (T005) as an example of a merely UNKNOWN
@@ -224,6 +243,7 @@ function installForbiddenPrimitives(target) {
 }
 
 function buildSandboxContext(dslPrimitives) {
+  Object.assign(dslPrimitives, SAFE_ES_BUILTINS);
   installForbiddenPrimitives(dslPrimitives);
   const proxy = new Proxy(dslPrimitives, {
     has() {
