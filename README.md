@@ -171,3 +171,4 @@ CI checks a pull request runs, and code-style expectations.
 ## License
 
 [MIT](LICENSE) — see the `LICENSE` file for the full text.
+
