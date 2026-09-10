@@ -8,6 +8,37 @@ Claude Code session, no real agents, and no network — while still exercising
 genuine concurrency and the same forbidden-primitive restrictions the real
 sandbox enforces.
 
+## In plain terms
+
+A "workflow-script" is a small program that orchestrates several AI
+sub-agents to do a multi-step task — for example, one script might review
+a piece of writing in several passes: check the argument, check the
+audience fit, check the tone, then combine those into a final verdict.
+Writing that script is easy to get subtly wrong: does it call the right
+number of sub-agents? Does it handle one of them failing or returning
+nothing? Does it actually run steps at the same time when it's supposed
+to, instead of secretly doing them one by one?
+
+Today, the only way to check any of that is to actually run the script
+for real — spend real money and real time calling real AI agents, every
+single time you want to check a small change. That's slow, it costs
+money for every test, and it's hard to deliberately test the "what if an
+agent fails" case on purpose.
+
+This harness lets you run that same script script **exactly as written**,
+but swap the real AI agents for scripted, instant, free stand-ins you
+control: "when the script asks agent X, pretend it answered with this,"
+or "pretend this one failed." You get the answer back in milliseconds,
+for free, and you can deliberately test the failure cases that are hard
+to trigger on demand with the real thing. It also double-checks that the
+script actually behaves the way the real system would — for instance,
+that steps which are supposed to run at the same time genuinely do, and
+that the script never tries to do something it isn't allowed to do (like
+reading the real system clock).
+
+In short: it's a flight simulator for these AI-orchestrating scripts —
+same instruments, same behavior, no real flight required to practice on.
+
 ## What this gives you
 
 - **Script-blind testing.** You hand `runWorkflowScript()` the exact text
