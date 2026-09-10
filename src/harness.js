@@ -44,21 +44,23 @@ class HarnessError extends Error {
 // touches `.stack` again.
 function healOriginalErrorStack(originalError) {
   try {
-    void originalError.stack; // force lazy computation now, inside a try
+    // The `return` itself forces the lazy `.stack` getter to evaluate now,
+    // inside this try.
     return originalError.stack;
-  } catch (_stackComputationFailed) {
-    const safeStack = String(originalError);
+  } catch (stackComputationError) {
+    const safeStack = `${String(originalError)}\n    (original stack unavailable: ${stackComputationError.message})`;
     try {
       Object.defineProperty(originalError, 'stack', {
         value: safeStack,
         configurable: true,
         writable: true
       });
-    } catch (_cannotRedefine) {
+      return safeStack;
+    } catch (redefineError) {
       // Best effort — even if we can't neutralize the dangerous getter on
-      // the original object, we still return a safe string for our own use.
+      // the original object, still return a safe string for our own use.
+      return `${safeStack} (also could not redefine .stack: ${redefineError.message})`;
     }
-    return safeStack;
   }
 }
 
@@ -78,6 +80,30 @@ class ScriptError extends Error {
 // literal contains a nested object (exactly what `phases: [{ ... }]`
 // always does). String literals are skipped over so a `{`/`}` inside a
 // quoted string never miscounts the depth.
+// Tracks whether the scanner is inside a quoted string, one character at
+// a time, so a `{`/`}` inside a string literal never miscounts brace
+// depth. Pulled out of extractMetaLiteral to keep that function's
+// cognitive complexity down — it only needs to know "was this character
+// part of string bookkeeping" (skip brace counting) or not (count it).
+function advanceStringState(state, ch) {
+  if (state.skipNext) {
+    return { inString: state.inString, skipNext: false };
+  }
+  if (state.inString) {
+    if (ch === '\\') {
+      return { inString: state.inString, skipNext: true };
+    }
+    if (ch === state.inString) {
+      return { inString: null, skipNext: false };
+    }
+    return state;
+  }
+  if (ch === '"' || ch === "'" || ch === '`') {
+    return { inString: ch, skipNext: false };
+  }
+  return state;
+}
+
 function extractMetaLiteral(scriptText) {
   const marker = /export\s+const\s+meta\s*=\s*/.exec(scriptText);
   if (!marker) {
@@ -89,28 +115,18 @@ function extractMetaLiteral(scriptText) {
   }
 
   let depth = 0;
-  let inString = null; // one of `'`, `"`, "`" while inside a string, else null
+  let stringState = { inString: null, skipNext: false };
   for (let i = start; i < scriptText.length; i++) {
     const ch = scriptText[i];
-    if (inString) {
-      if (ch === '\\') {
-        i++; // skip the escaped character
-      } else if (ch === inString) {
-        inString = null;
-      }
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === '`') {
-      inString = ch;
-      continue;
+    const wasInString = stringState.inString;
+    stringState = advanceStringState(stringState, ch);
+    if (wasInString || stringState.inString) {
+      continue; // this character was part of string bookkeeping, not a brace
     }
     if (ch === '{') {
       depth++;
-    } else if (ch === '}') {
-      depth--;
-      if (depth === 0) {
-        return scriptText.slice(start, i + 1);
-      }
+    } else if (ch === '}' && --depth === 0) {
+      return scriptText.slice(start, i + 1);
     }
   }
   return undefined;
@@ -419,7 +435,7 @@ async function runWorkflowScript(scriptText, options) {
       return Promise.all(itemPromises);
     },
     budget: {
-      total: options.budget && options.budget.total,
+      total: options.budget?.total,
       spent: function() {
         if (!options.budget || !Array.isArray(options.budget.spentSequence)) {
           throw new HarnessError(

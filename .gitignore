@@ -4,3 +4,4 @@ coverage.lcov
 .env
 .env.*
 !.env.example
+.scannerwork/
