@@ -1,12 +1,45 @@
 # workflow-script-harness
 
-A test harness for scripts written against Claude Code's **Workflow tool**
-DSL (`agent()`, `pipeline()`, `parallel()`, `phase()`, `log()`, `args`,
-`budget`). It reproduces that sandbox in Node's built-in `vm` module, so a
-workflow-script can be tested under `node:test` — unmodified, with no real
-Claude Code session, no real agents, and no network — while still exercising
-genuine concurrency and the same forbidden-primitive restrictions the real
-sandbox enforces.
+[![npm version](https://img.shields.io/npm/v/workflow-script-harness.svg)](https://www.npmjs.com/package/workflow-script-harness)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](package.json)
+
+A test harness for scripts written against Claude Code's **Dynamic
+Workflows** feature — the `Workflow` tool's DSL (`agent()`, `pipeline()`,
+`parallel()`, `phase()`, `log()`, `args`, `budget`). It reproduces that
+sandbox in Node's built-in `vm` module, so a workflow-script can be tested
+under `node:test` — unmodified, with no real Claude Code session, no real
+agents, and no network — while still exercising genuine concurrency and the
+same forbidden-primitive restrictions the real sandbox enforces.
+
+**Sandbox semantics last verified against Claude Code's Workflow tool as of
+2026-09-09** (Node.js 18+). Anthropic can change the runtime's allowed
+globals or concurrency behavior at any time — if something here silently
+stops matching reality, please [open an
+issue](https://github.com/vannifr/workflow-script-harness/issues) with the
+Claude Code version you're on; see `CONSTITUTION.md` for how to re-verify.
+
+## Quickstart
+
+```bash
+npm install workflow-script-harness
+```
+
+```js
+const { runWorkflowScript } = require('workflow-script-harness');
+
+const script = `
+  export const meta = { name: 'review', phases: [] };
+  const result = await agent('Review this file', { label: 'reviewer' });
+  export default result;
+`;
+
+const result = await runWorkflowScript(script, {
+  agentResponses: { reviewer: [{ findings: [], approved: true }] }
+});
+
+result.value; // { findings: [], approved: true }
+```
 
 ## In plain terms
 
@@ -70,7 +103,10 @@ decisions and their rationale (`plan.md`/`research.md`), the API contract
 (`contracts/`), and the BDD acceptance scenarios (`tests/features/`) that
 back every claim above.
 
-## Install
+## Local development setup
+
+Cloning this repo to work on the harness itself (not needed just to consume
+it — see [Quickstart](#quickstart) for that):
 
 ```bash
 npm install
@@ -87,8 +123,9 @@ anything the sandbox itself needs).
 ## Usage
 
 ```js
-// As a git dependency (e.g. "workflow-script-harness": "github:vannifr/workflow-script-harness"
-// in package.json) or a local path — this package is not published to npm.
+// Alternative to the npm package: a git dependency
+// ("workflow-script-harness": "github:vannifr/workflow-script-harness" in
+// package.json) or a local path.
 const { runWorkflowScript } = require('workflow-script-harness');
 
 const script = `
@@ -137,6 +174,52 @@ deterministically: two entries genuinely overlapped if
 script): `specs/001-workflow-script-harness/quickstart.md` — each one is
 validated to run correctly against the current implementation, not just
 described.
+
+## Why not a generic JS sandbox?
+
+`isolated-vm`, QuickJS-via-WASM, and (deprecated, CVE-carrying) `vm2` solve
+a different problem: safely running *untrusted* code in production. This
+harness isn't a security boundary and doesn't try to be one — Node's `vm`
+module is explicitly not hardened against a malicious script, which is
+fine here because the script under test is **yours**, running locally in a
+test process you already trust. What it needs to get right instead is
+*behavioral accuracy*: the same allowed/forbidden globals, the same
+`agent()`/`parallel()`/`pipeline()` semantics, and genuine (not simulated)
+concurrency, so a green test actually predicts what happens in the real
+Workflow tool. That's a narrower, different goal than sandboxing untrusted
+code, which is why a general-purpose sandbox library doesn't replace this.
+
+## FAQ
+
+**Does this run inside Claude Code?** No — it's a standalone Node package
+you run with `node:test`, completely outside any Claude Code session.
+
+**Does this replace testing against real agents?** No. It replaces the
+*repeated, per-change* real-agent runs you'd otherwise need during
+development — validate orchestration logic, error handling, and
+concurrency here for free and instantly, then do a final real run before
+you trust a script in production.
+
+**What if Anthropic changes the Workflow tool's sandbox?** The forbidden-
+primitives list and concurrency semantics here are a point-in-time
+snapshot (see the verification date at the top of this README). If
+they drift from reality, please open an issue — see `CONSTITUTION.md` for
+how this project re-verifies against the real runtime.
+
+## Repository layout
+
+To just **use** the harness, you only need `src/harness.js` (via npm) and
+this README. Everything else here is process documentation for
+maintainers and contributors, kept public for transparency rather than
+because a consumer needs to read it:
+
+| Path | What it's for |
+|---|---|
+| `src/harness.js` | The entire implementation. Single file, zero runtime dependencies. |
+| `CONSTITUTION.md`, `PREMISE.md` | This project's governing principles and scope (spec-driven development, mandatory TDD). |
+| `specs/001-workflow-script-harness/` | The full spec → plan → tasks → implementation trail, plus the BDD `.feature` files — evidence for the claims in this README, not required reading. |
+| `AGENTS.md`, `CLAUDE.md` | Instructions for AI coding agents working on *this* repo's own codebase — irrelevant if you're only consuming the package. |
+| `CONTRIBUTING.md` | The PR process, if you want to contribute a fix. |
 
 ## Development
 

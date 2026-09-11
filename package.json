@@ -1,8 +1,13 @@
 {
   "name": "workflow-script-harness",
   "version": "1.0.0",
-  "description": "A test harness for Claude Code's Workflow-tool DSL — run agent()/parallel()/pipeline() scripts unmodified under node:test, with scripted agent responses instead of real API calls.",
+  "description": "Test harness for Claude Code's Dynamic Workflows / Workflow tool DSL — run agent()/parallel()/pipeline() scripts unmodified under node:test, with scripted agent responses instead of real API calls.",
   "main": "src/harness.js",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -16,7 +21,7 @@
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.1"
   },
-  "keywords": ["workflow", "testing", "dsl", "sandbox", "claude-code", "test-harness", "vm"],
+  "keywords": ["workflow", "dynamic-workflows", "testing", "dsl", "sandbox", "claude-code", "anthropic", "ai-agents", "llm-testing", "test-harness", "mock", "vm"],
   "author": "Frederik Vannieuwenhuyse",
   "license": "MIT",
   "repository": {
