@@ -76,6 +76,8 @@ steps:
       SONAR_TOKEN:
         from_secret: sonar_token
     commands:
+      - apk add --no-cache git || true
+      - git fetch --unshallow 2>/dev/null || true
       - ./scripts/local-ci-checks.sh --strict sonarqube
     when:
       - event: push
