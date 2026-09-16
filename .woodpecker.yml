@@ -69,7 +69,7 @@ steps:
     # preceding "test" step (shared workspace within one pipeline run).
     # push-to-main only (see the file-level comment above) — never runs on
     # pull_request, so a fork PR is never handed these secrets.
-    image: sonarsource/sonar-scanner-cli:latest
+    image: sonarsource/sonar-scanner-cli@sha256:23ca0f137965d9dff2198074043fd48d386280bc5d0ccac8c8349cea4cf096a9
     environment:
       SONAR_HOST_URL:
         from_secret: sonar_host_url
