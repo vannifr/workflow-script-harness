@@ -49,6 +49,35 @@ steps:
         branch: main
       - event: pull_request
 
+  - name: vuln-scan
+    # devops-stack-uitbreiding item 5: filesystem-dependency-scan. Bewust
+    # NIET blocking (geen --exit-code) bij eerste uitrol.
+    image: aquasec/trivy:latest
+    commands:
+      - trivy fs --severity CRITICAL,HIGH --format table .
+    depends_on: [test]
+    when:
+      - event: push
+        branch: main
+
+  - name: sbom
+    # devops-stack-uitbreiding item 5: SBOM-generatie, informatief. GEEN
+    # officieel anchore/syft-image (distroless/geen /bin/sh op het pad
+    # Woodpecker verwacht) -- syft installeren via het officiële
+    # install-script, gepind naar v1.19.0.
+    image: alpine:3.20
+    environment:
+      SYFT_VERSION: v1.19.0
+    commands:
+      - apk add --no-cache curl
+      - curl -sSfL "https://raw.githubusercontent.com/anchore/syft/$SYFT_VERSION/install.sh" -o install.sh
+      - sh install.sh -b /usr/local/bin "$SYFT_VERSION"
+      - syft . -o table
+    depends_on: [test]
+    when:
+      - event: push
+        branch: main
+
   - name: test
     # node:22 (not -slim): no extra OS deps needed for node:test or
     # cucumber-js, and it's the same major version used in local development.
@@ -79,6 +108,7 @@ steps:
       - apk add --no-cache git || true
       - git fetch --unshallow 2>/dev/null || true
       - ./scripts/local-ci-checks.sh --strict sonarqube
+    depends_on: [test]
     when:
       - event: push
         branch: main
