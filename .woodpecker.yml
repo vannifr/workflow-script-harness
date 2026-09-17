@@ -64,13 +64,14 @@ steps:
     # devops-stack-uitbreiding item 5: SBOM-generatie, informatief. GEEN
     # officieel anchore/syft-image (distroless/geen /bin/sh op het pad
     # Woodpecker verwacht) -- syft installeren via het officiële
-    # install-script, gepind naar v1.19.0.
+    # install-script, gepind naar v1.19.0, geverifieerd via sha256sum.
     image: alpine:3.20
     environment:
       SYFT_VERSION: v1.19.0
     commands:
       - apk add --no-cache curl
       - curl -sSfL "https://raw.githubusercontent.com/anchore/syft/$SYFT_VERSION/install.sh" -o install.sh
+      - echo "709ae9171e3d44e456a111943c341d0bf0fd2176b41af124d019823a70c34a3f  install.sh" | sha256sum -c -
       - sh install.sh -b /usr/local/bin "$SYFT_VERSION"
       - syft . -o table
     depends_on: [test]
