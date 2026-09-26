@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # workflow-script-harness Development Guide
 
 **Last updated**: 2026-09-09
