@@ -51,9 +51,9 @@ check_gitleaks() {
         warn_or_fail "gitleaks not installed, step skipped."
         return $?
     fi
-    if [ -n "${CI_PREV_COMMIT_SHA:-}" ]; then
-        gitleaks git -v --log-opts="$CI_PREV_COMMIT_SHA..$CI_COMMIT_SHA" .
-    else
+    sh scripts/secret-scan.sh selftest || return 1
+    sh scripts/secret-scan.sh || return 1
+    if [ "$STRICT" -ne 1 ]; then
         gitleaks protect --staged -v .
     fi
 }

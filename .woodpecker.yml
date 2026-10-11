@@ -21,15 +21,24 @@ when:
     branch: main
   - event: pull_request
 
+clone:
+  git:
+    image: woodpeckerci/plugin-git@sha256:550075c844fcec0af41d9d28f9860aa5d8c43e1e9419be4b9266dc02c2f29804
+    settings:
+      depth: 0
+      partial: false
+
 steps:
   - name: gitleaks
-    # Scans only the commits from THIS push (CI_PREV_COMMIT_SHA/
-    # CI_COMMIT_SHA, see scripts/local-ci-checks.sh) — a full-history scan
-    # would permanently block a repo the moment a secret has ever existed
-    # anywhere in its history.
-    image: ghcr.io/gitleaks/gitleaks:v8.30.1
+    # Scans the full history (clone block above: depth 0, partial false).
+    # scripts/secret-scan.sh fails on a shallow or partial clone and on a
+    # commit count below the commits with added non-binary lines, and runs a
+    # self-test with a planted secret first. No fallback: CI never degrades
+    # to a staged-only scan. No baseline is used (full history is clean).
+    image: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
     commands:
-      - ./scripts/local-ci-checks.sh --strict gitleaks
+      - sh scripts/secret-scan.sh selftest
+      - sh scripts/secret-scan.sh
     when:
       - event: push
         branch: main
