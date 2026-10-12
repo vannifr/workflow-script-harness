@@ -3,7 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const root = path.join(__dirname, '..');
 const pipeline = fs.readFileSync(path.join(root, '.woodpecker.yml'), 'utf8');
@@ -43,6 +45,68 @@ test('secret-scan.sh keeps its shallow, partial, zero-count and floor guards', (
   assert.match(script, /scanner reported no commits scanned/);
   assert.match(script, /expected at least/);
   assert.match(script, /selftest: planted secret must fail/);
+});
+
+test('secret-scan.sh isolates its self-test from an inherited git hook environment', () => {
+  const script = fs.readFileSync(path.join(root, 'scripts', 'secret-scan.sh'), 'utf8');
+  const selftest = script.slice(script.indexOf('selftest() {'), script.indexOf('case "${1:-}" in'));
+  assert.match(selftest, /for v in \$\(git rev-parse --local-env-vars\); do\s+unset "\$v"\s+done/);
+  assert.ok(selftest.indexOf('--local-env-vars') < selftest.indexOf('git -C "$tmp" init'));
+});
+
+test('secret-scan.sh logs the baseline entry count, scans with gitleaks git and uses a COMMIT marker', () => {
+  const script = fs.readFileSync(path.join(root, 'scripts', 'secret-scan.sh'), 'utf8');
+  assert.match(script, /baseline-count\) baseline_count "\$2"; exit 0/);
+  assert.match(script, /baseline: \$\{SCAN_BASELINE\} \(\$\(baseline_count "\$SCAN_BASELINE"\) entries\)/);
+  assert.match(script, /gitleaks git "\$@" "\$dir"/);
+  assert.doesNotMatch(script, /gitleaks detect/);
+  assert.match(script, /--format='COMMIT %H' --numstat/);
+  assert.match(script, /\$1!="0"&&\$1!="-"/);
+});
+
+test('secret-scan.sh selftest leaves the invoking repository untouched under a hook environment', () => {
+  const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const git = (cwd, ...args) => spawnSync('git', ['-c', 'user.name=probe', '-c', 'user.email=probe@example.invalid', ...args], { cwd, env: clean, encoding: 'utf8' });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'secret-scan-hook-'));
+  try {
+    const repo = path.join(tmp, 'repo');
+    const bin = path.join(tmp, 'bin');
+    fs.mkdirSync(repo);
+    fs.mkdirSync(bin);
+    assert.strictEqual(git(repo, 'init', '-q').status, 0);
+    fs.writeFileSync(path.join(repo, 'a.txt'), 'a\n');
+    git(repo, 'add', 'a.txt');
+    assert.strictEqual(git(repo, 'commit', '-q', '-m', 'init').status, 0);
+    fs.writeFileSync(
+      path.join(bin, 'gitleaks'),
+      [
+        '#!/bin/sh',
+        'for a in "$@"; do dir=$a; done',
+        'while [ $# -gt 0 ]; do [ "$1" = --report-path ] && report=$2; shift; done',
+        'if [ -f "$dir/planted.txt" ]; then echo \'[{"RuleID":"stub"}]\' > "$report"; echo "2 commits scanned."; exit 1; fi',
+        'echo "[]" > "$report"; echo "1 commits scanned."; exit 0',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    const snapshot = () => ({
+      config: fs.readFileSync(path.join(repo, '.git', 'config'), 'utf8'),
+      bare: git(repo, 'config', 'core.bare').stdout,
+      count: git(repo, 'rev-list', '--all', '--count').stdout,
+      refs: git(repo, 'for-each-ref').stdout,
+    });
+    const before = snapshot();
+    const result = spawnSync('sh', [path.join(root, 'scripts', 'secret-scan.sh'), 'selftest'], {
+      cwd: root,
+      env: { ...clean, PATH: `${bin}:${process.env.PATH}`, GIT_DIR: path.join(repo, '.git'), GIT_INDEX_FILE: path.join(repo, '.git', 'index') },
+      encoding: 'utf8',
+    });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /selftest ok: clean passes, planted secret reported/);
+    assert.deepStrictEqual(snapshot(), before);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test('local-ci-checks.sh delegates gitleaks to secret-scan.sh', () => {

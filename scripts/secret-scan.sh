@@ -8,6 +8,10 @@ expected_count() {
     git log --format='COMMIT %H' --numstat | awk '/^COMMIT /{if(c&&f)n++; c=1; f=0; next} NF&&$1!="0"&&$1!="-"{f=1} END{if(c&&f)n++; print n+0}'
 }
 
+baseline_count() {
+    grep -o '"RuleID"' "$1" | wc -l | tr -d ' '
+}
+
 scan() {
     dir=$1
     report="$WORK/report.json"
@@ -28,6 +32,9 @@ scan() {
 }
 
 selftest() {
+    for v in $(git rev-parse --local-env-vars); do
+        unset "$v"
+    done
     SCAN_BASELINE=
     SCAN_CONFIG=
     [ ! -f .gitleaks.toml ] || SCAN_CONFIG="$(pwd)/.gitleaks.toml"
@@ -55,6 +62,7 @@ selftest() {
 case "${1:-}" in
     selftest) selftest; exit 0 ;;
     expected-count) expected_count; exit 0 ;;
+    baseline-count) baseline_count "$2"; exit 0 ;;
 esac
 
 [ "$(git rev-parse --is-shallow-repository)" = false ] || { echo "FAIL: shallow clone, history incomplete"; exit 1; }
@@ -63,7 +71,7 @@ esac
 SCAN_BASELINE=${GITLEAKS_BASELINE:-}
 SCAN_CONFIG=
 if [ -n "$SCAN_BASELINE" ]; then
-    echo "baseline: ${SCAN_BASELINE} ($(grep -c '"RuleID"' "$SCAN_BASELINE" || true) entries)"
+    echo "baseline: ${SCAN_BASELINE} ($(baseline_count "$SCAN_BASELINE") entries)"
 else
     echo "baseline: none"
 fi
