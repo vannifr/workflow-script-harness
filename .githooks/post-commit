@@ -1,0 +1,3 @@
+#!/bin/sh
+. "$(dirname "$0")/iikit-chain.sh"
+run_iikit_hook post-commit

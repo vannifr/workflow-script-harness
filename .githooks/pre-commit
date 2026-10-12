@@ -5,3 +5,5 @@ set -e
 ./scripts/local-ci-checks.sh env-guard
 ./scripts/local-ci-checks.sh gitleaks
 ./scripts/verify.sh
+. "$(dirname "$0")/iikit-chain.sh"
+run_iikit_hook pre-commit
