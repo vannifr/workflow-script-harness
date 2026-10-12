@@ -32,8 +32,13 @@ check_env_guard() {
     # default (fatal: detected dubious ownership in repository) — harmless
     # here (a disposable, single-use CI container), so allow it explicitly
     # rather than have the whole check silently fail with an unrelated-
-    # looking git error.
-    git config --global --add safe.directory "$(pwd)" 2>/dev/null || true
+    # looking git error. Only in CI/strict mode and only once: on a
+    # developer machine this would append to ~/.gitconfig on every commit.
+    if [ "$STRICT" -eq 1 ] || [ -n "${CI:-}" ]; then
+        if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$(pwd)"; then
+            git config --global --add safe.directory "$(pwd)" 2>/dev/null || true
+        fi
+    fi
     if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         echo "FAIL: env-guard cannot use git in this directory (git rev-parse failed)." >&2
         return 1

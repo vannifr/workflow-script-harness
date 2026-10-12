@@ -115,3 +115,35 @@ test('local-ci-checks.sh delegates gitleaks to secret-scan.sh', () => {
   assert.match(script, /sh scripts\/secret-scan\.sh \|\| return 1/);
   assert.doesNotMatch(script, /CI_PREV_COMMIT_SHA/);
 });
+
+function envGuardSafeDirectories(args, extraEnv) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-guard-'));
+  fs.mkdirSync(path.join(dir, 'scripts'));
+  fs.copyFileSync(path.join(root, 'scripts', 'local-ci-checks.sh'), path.join(dir, 'scripts', 'local-ci-checks.sh'));
+  fs.chmodSync(path.join(dir, 'scripts', 'local-ci-checks.sh'), 0o755);
+  const gitconfig = path.join(dir, 'gitconfig');
+  fs.writeFileSync(gitconfig, '');
+  const env = { ...process.env, GIT_CONFIG_GLOBAL: gitconfig, ...extraEnv };
+  for (const key of ['GIT_DIR', 'GIT_INDEX_FILE', 'GIT_WORK_TREE', 'GIT_PREFIX']) delete env[key];
+  if (!('CI' in extraEnv)) delete env.CI;
+  spawnSync('git', ['init', '-q'], { cwd: dir, env });
+  let status = 0;
+  for (let i = 0; i < 3; i += 1) {
+    status = spawnSync('./scripts/local-ci-checks.sh', args, { cwd: dir, env, encoding: 'utf8' }).status;
+    assert.strictEqual(status, 0);
+  }
+  const listed = spawnSync('git', ['config', '--file', gitconfig, '--get-all', 'safe.directory'], { env, encoding: 'utf8' }).stdout;
+  return listed.split('\n').filter(Boolean).length;
+}
+
+test('env-guard registers safe.directory exactly once across repeated strict runs', () => {
+  assert.strictEqual(envGuardSafeDirectories(['--strict', 'env-guard'], {}), 1);
+});
+
+test('env-guard registers safe.directory exactly once across repeated runs under CI', () => {
+  assert.strictEqual(envGuardSafeDirectories(['env-guard'], { CI: 'woodpecker' }), 1);
+});
+
+test('env-guard does not write the global git config on a developer machine', () => {
+  assert.strictEqual(envGuardSafeDirectories(['env-guard'], {}), 0);
+});
