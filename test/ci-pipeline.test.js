@@ -147,3 +147,83 @@ test('env-guard registers safe.directory exactly once across repeated runs under
 test('env-guard does not write the global git config on a developer machine', () => {
   assert.strictEqual(envGuardSafeDirectories(['env-guard'], {}), 0);
 });
+
+function withScanFixture(fn) {
+  const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'secret-scan-guard-'));
+  try {
+    const repo = path.join(tmp, 'repo');
+    const bin = path.join(tmp, 'bin');
+    fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
+    fs.mkdirSync(bin);
+    fs.copyFileSync(path.join(root, 'scripts', 'secret-scan.sh'), path.join(repo, 'scripts', 'secret-scan.sh'));
+    const git = (cwd, ...args) => spawnSync('git', ['-c', 'user.name=probe', '-c', 'user.email=probe@example.invalid', ...args], { cwd, env: clean, encoding: 'utf8' });
+    assert.strictEqual(git(repo, 'init', '-q').status, 0);
+    git(repo, 'add', '.');
+    assert.strictEqual(git(repo, 'commit', '-q', '-m', 'init').status, 0);
+    fs.writeFileSync(
+      path.join(bin, 'gitleaks'),
+      [
+        '#!/bin/sh',
+        'for a in "$@"; do dir=$a; done',
+        'while [ $# -gt 0 ]; do [ "$1" = --report-path ] && report=$2; shift; done',
+        'if [ -f "$dir/planted.txt" ]; then echo \'[{"RuleID":"stub"}]\' > "$report"; echo "2 commits scanned."; exit 1; fi',
+        'echo "[]" > "$report"',
+        '[ -z "$STUB_ERRLINE" ] || echo "10:00AM ERR failed to load something"',
+        'echo "1 commits scanned."',
+        'exit 0',
+        '',
+      ].join('\n'),
+      { mode: 0o755 },
+    );
+    const run = (args, cwd, env) =>
+      spawnSync('sh', [path.join(repo, 'scripts', 'secret-scan.sh'), ...args], {
+        cwd: cwd || repo,
+        env: { ...clean, PATH: `${bin}:${process.env.PATH}`, ...env },
+        encoding: 'utf8',
+      });
+    fn({ tmp, repo, run });
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+test('secret-scan.sh fails on a scanner error line even when the scanner exits 0', () => {
+  withScanFixture(({ run }) => {
+    const result = run([], undefined, { STUB_ERRLINE: '1' });
+    assert.strictEqual(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /FAIL: scanner logged an error line/);
+  });
+});
+
+test('secret-scan.sh fails on an unreadable baseline file', () => {
+  withScanFixture(({ tmp, run }) => {
+    const missing = path.join(tmp, 'missing.json');
+    const result = run([], undefined, { GITLEAKS_BASELINE: missing });
+    assert.strictEqual(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, new RegExp(`FAIL: baseline ${missing.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} not readable`));
+  });
+});
+
+test('secret-scan.sh reports a directory that is not a git repository', () => {
+  withScanFixture(({ tmp, run }) => {
+    const plain = path.join(tmp, 'plain');
+    fs.mkdirSync(plain);
+    const result = run([], plain, { GIT_CEILING_DIRECTORIES: tmp });
+    assert.strictEqual(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /FAIL: not a git repository/);
+  });
+});
+
+test('secret-scan.sh selftest ignores a global core.hooksPath and commit.gpgsign', () => {
+  withScanFixture(({ tmp, run }) => {
+    const hooks = path.join(tmp, 'hooks');
+    fs.mkdirSync(hooks);
+    fs.writeFileSync(path.join(hooks, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const globalConfig = path.join(tmp, 'gitconfig');
+    fs.writeFileSync(globalConfig, `[core]\n\thooksPath = ${hooks}\n[commit]\n\tgpgsign = true\n`);
+    const result = run(['selftest'], undefined, { GIT_CONFIG_GLOBAL: globalConfig });
+    assert.strictEqual(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /selftest ok/);
+  });
+});

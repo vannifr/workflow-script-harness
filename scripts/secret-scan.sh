@@ -43,6 +43,8 @@ selftest() {
     git -C "$tmp" init -q
     git -C "$tmp" config user.email t@example.invalid
     git -C "$tmp" config user.name t
+    git -C "$tmp" config core.hooksPath /dev/null
+    git -C "$tmp" config commit.gpgsign false
     printf 'clean\n' >"$tmp/clean.txt"
     git -C "$tmp" add clean.txt
     git -C "$tmp" commit -q -m clean
@@ -65,12 +67,18 @@ case "${1:-}" in
     baseline-count) baseline_count "$2"; exit 0 ;;
 esac
 
-[ "$(git rev-parse --is-shallow-repository)" = false ] || { echo "FAIL: shallow clone, history incomplete"; exit 1; }
-[ -z "$(git config --get remote.origin.partialclonefilter || true)" ] || { echo "FAIL: partial clone, history incomplete"; exit 1; }
-[ -z "$(git config --get extensions.partialclone || true)" ] || { echo "FAIL: partial clone, history incomplete"; exit 1; }
+shallow=$(git rev-parse --is-shallow-repository) || { echo "FAIL: not a git repository (worktree or bind mount?)"; exit 1; }
+[ "$shallow" = false ] || { echo "FAIL: shallow clone, history incomplete"; exit 1; }
+for key in remote.origin.partialclonefilter extensions.partialclone; do
+    if git config --get "$key" >/dev/null; then
+        echo "FAIL: partial clone, history incomplete"
+        exit 1
+    fi
+done
 SCAN_BASELINE=${GITLEAKS_BASELINE:-}
 SCAN_CONFIG=
 if [ -n "$SCAN_BASELINE" ]; then
+    [ -r "$SCAN_BASELINE" ] || { echo "FAIL: baseline $SCAN_BASELINE not readable"; exit 1; }
     echo "baseline: ${SCAN_BASELINE} ($(baseline_count "$SCAN_BASELINE") entries)"
 else
     echo "baseline: none"
@@ -78,6 +86,10 @@ fi
 expected=$(expected_count)
 scan .
 [ "$SCAN_RC" -eq 0 ] || exit "$SCAN_RC"
+if grep -qE ' (ERR|FTL) |^fatal:' "$WORK/scan.log"; then
+    echo "FAIL: scanner logged an error line"
+    exit 1
+fi
 if [ -z "$SCAN_SCANNED" ] || [ "$SCAN_SCANNED" -le 0 ]; then
     echo "FAIL: scanner reported no commits scanned"
     exit 1
