@@ -58,6 +58,17 @@ steps:
         branch: main
       - event: pull_request
 
+  - name: backlog-check
+    image: alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    commands:
+      - apk add --no-cache python3
+      - python3 -I scripts/backlog-check/src/check_backlogs.py --file BACKLOG.md --name workflow-script-harness
+    when:
+      - event: push
+        branch: main
+
   - name: vuln-scan
     # devops-stack-uitbreiding item 5: filesystem-dependency-scan. Bewust
     # NIET blocking (geen --exit-code) bij eerste uitrol.

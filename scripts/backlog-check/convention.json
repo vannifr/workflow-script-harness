@@ -1,0 +1,67 @@
+{
+  "title_prefix": "# Backlog — ",
+  "convention_word": "backlog-system",
+  "sections": [
+    "Nu",
+    "Volgende",
+    "Geblokkeerd",
+    "Gepland",
+    "Later"
+  ],
+  "now_section": "Nu",
+  "now_max": 3,
+  "contexts": [
+    "brainstorm",
+    "content",
+    "dev",
+    "publicatie"
+  ],
+  "actors": [
+    "F",
+    "C"
+  ],
+  "require_all_sections": true,
+  "empty_marker": "Geen.",
+  "stale_days": 30,
+  "version": 1,
+  "blocked_section": "Geblokkeerd",
+  "deadline_horizon_days": 180,
+  "agents_check_level": "error",
+  "agents_markers": [
+    {
+      "name": "BACKLOG.md as the single backlog",
+      "pattern": "BACKLOG\\.md"
+    },
+    {
+      "name": "reference to the convention (backlog-system)",
+      "pattern": "backlog-system"
+    },
+    {
+      "name": "validation command (check_backlogs.py)",
+      "pattern": "check_backlogs\\.py"
+    },
+    {
+      "name": "portfolio task link rule (task: TASK-<n>)",
+      "pattern": "task: TASK-"
+    }
+  ],
+  "agents_stale_pattern": "(?<![A-Za-z])(?:docs/)?backlog\\.md\\b(?!@)",
+  "agents_history_words": [
+    "voorheen",
+    "formerly",
+    "heette",
+    "was named",
+    "previously",
+    "oude",
+    "old file",
+    "legacy"
+  ],
+  "inventory_statuses": [
+    "adopterend",
+    "systeem",
+    "triage",
+    "dormant",
+    "uitgesloten",
+    "worktree"
+  ]
+}
