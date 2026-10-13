@@ -132,3 +132,5 @@ steps:
     when:
       - event: push
         branch: main
+        path:
+          exclude: ['**/*.md', 'docs/**']
