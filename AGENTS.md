@@ -46,7 +46,7 @@ the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 
 ## CI quality gate
 
-- Only the `sonarqube` step skips docs-only pushes (`path.exclude: ['**/*.md', 'docs/**']` on its push/main `when`); every other step, including `test`, always runs, and `test/ci-pipeline-path-filters.test.js` guards this (no other step gets a `path`, no pipeline-level `path`, no `evaluate:`/`failure:`).
+- Only the `sonarqube` step skips docs-only pushes (`path.exclude: ['**/*.md', 'docs/**']` on its push/main `when`); every other step, including `test`, always runs on the events it already ran on (gate steps are never filtered), and `test/ci-pipeline-path-filters.test.js` guards this (no other step gets a `path`, no pipeline-level `path`, no `evaluate:`/`failure:`). The guard reads line structure, so it protects against accidental edits, not against deliberately crafted YAML quoting.
 - The `sonarqube` step runs `./scripts/local-ci-checks.sh --strict sonarqube`. The wrapper keeps the scanner exit status in `sonar_rc`, runs `sh scripts/sonar-conditions.sh "$sonar_rc"` and returns that status, so a failed scan still fails the step. On a failed scan the script queries `api/qualitygates/project_status` and prints each failing condition (metric, comparator, threshold, actual value); the token goes to curl on stdin only and is never printed. `scripts/sonar-conditions.sh` is byte-identical to the shared reference (`~/projects/ci-hardening/handover/sonar-conditions.sh`, check with `cmp`) and lies outside `sonar.sources`, so it is not part of the Sonar coverage. `test/sonar-conditions.test.js` guards it with a stub `curl` and a stub `sonar-scanner` on `PATH`.
 
 ## Backlog
