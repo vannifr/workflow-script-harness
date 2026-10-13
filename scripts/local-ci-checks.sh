@@ -79,7 +79,10 @@ check_sonarqube() {
         return $?
     fi
     export SONAR_HOST_URL SONAR_TOKEN
-    sonar-scanner -Dsonar.qualitygate.wait=true
+    sonar_rc=0
+    sonar-scanner -Dsonar.qualitygate.wait=true || sonar_rc=$?
+    sh scripts/sonar-conditions.sh "$sonar_rc"
+    return "$sonar_rc"
 }
 
 FAIL=0
