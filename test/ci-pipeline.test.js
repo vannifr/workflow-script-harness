@@ -227,3 +227,32 @@ test('secret-scan.sh selftest ignores a global core.hooksPath and commit.gpgsign
     assert.match(result.stdout, /selftest ok/);
   });
 });
+
+function vulnScanStep() {
+  return stepBlock('vuln-scan').split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+}
+
+function vulnScanCommands() {
+  return vulnScanStep().split('\n').map((l) => l.trim()).filter((l) => l.startsWith('- trivy fs '));
+}
+
+test('vuln-scan runs exactly one trivy fs scan that exits non-zero on findings', () => {
+  const commands = vulnScanCommands();
+  assert.strictEqual(commands.length, 1);
+  assert.match(commands[0], /(^|\s)--exit-code[ =]1(\s|$)/);
+});
+
+test('vuln-scan ignores only unfixed CVEs and keeps the CRITICAL,HIGH scope', () => {
+  const [command] = vulnScanCommands();
+  assert.match(command, /--ignore-unfixed/);
+  assert.match(command, /--severity CRITICAL,HIGH/);
+});
+
+test('vuln-scan has no silent fallback, no forced exit 0 and is not advisory', () => {
+  assert.doesNotMatch(vulnScanStep(), /\|\|\s*true|--exit-code[ =]0|failure:/);
+});
+
+test('vuln-scan image is pinned by digest and the step has no stale advisory wording', () => {
+  assert.match(vulnScanStep(), /image: aquasec\/trivy:[0-9.]+@sha256:[0-9a-f]{64}/);
+  assert.doesNotMatch(stepBlock('vuln-scan'), /NIET blocking|not blocking|:latest/i);
+});

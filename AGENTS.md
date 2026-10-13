@@ -40,6 +40,10 @@ the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 - Do not modify `.feature` files or hash-locked test specs directly.
 - Do not bypass git hooks (`--no-verify`, `-n`, plumbing commands).
 
+## CI dependency gate
+
+- The `vuln-scan` step runs `trivy fs --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1` from a digest-pinned image and blocks the pipeline on a fixable finding. Trivy skips dev dependencies by default, so it only covers what it can resolve in `package-lock.json` outside `devDependencies`. `test/ci-pipeline.test.js` guards the step (exit code, `--ignore-unfixed`, no `|| true`, no `failure:`, digest pin).
+
 ## Backlog
 
 - Open work lives in one file: `BACKLOG.md` in the repo root. There is no other backlog; plans, status and goal documents are not backlogs.
