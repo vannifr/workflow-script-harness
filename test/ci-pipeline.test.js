@@ -248,6 +248,10 @@ test('vuln-scan ignores only unfixed CVEs and keeps the CRITICAL,HIGH scope', ()
   assert.match(command, /--severity CRITICAL,HIGH/);
 });
 
+test('vuln-scan includes dev dependencies, the only dependencies this repo has', () => {
+  assert.match(vulnScanCommands()[0], /--include-dev-deps/);
+});
+
 test('vuln-scan has no silent fallback, no forced exit 0 and is not advisory', () => {
   assert.doesNotMatch(vulnScanStep(), /\|\|\s*true|--exit-code[ =]0|failure:/);
 });
