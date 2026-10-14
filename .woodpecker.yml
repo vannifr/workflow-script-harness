@@ -69,6 +69,17 @@ steps:
       - event: push
         branch: main
 
+  - name: docs-check
+    image: alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    commands:
+      - apk add --no-cache python3
+      - python3 -I scripts/docs-check/check_repo_docs.py
+    when:
+      - event: push
+        branch: main
+
   - name: vuln-scan
     # Blocking: a CRITICAL/HIGH with an available fix fails the build; --ignore-unfixed skips CVEs without a fix; --include-dev-deps because this repo has only devDependencies.
     image: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
