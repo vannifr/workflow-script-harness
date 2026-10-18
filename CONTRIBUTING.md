@@ -22,10 +22,9 @@ to get a change merged.
    npm install
    ```
 3. **Make your change with tests.** This project follows spec-driven
-   development and mandatory TDD (see `CONSTITUTION.md`) — a bug fix or
-   feature without a test won't be merged. For anything beyond a trivial
-   fix, a short description of the change and why it's needed in the PR
-   description makes review much faster than a large, unexplained diff.
+   development and mandatory TDD (see `CONSTITUTION.md`) — a bug fix or feature without a test won't be merged.
+
+   For anything beyond a trivial fix, a short description of the change and why it's needed in the PR description makes review much faster than a large, unexplained diff.
 4. **Run the full local gate before opening a PR**:
    ```bash
    npm test          # unit tests + BDD scenarios
@@ -41,14 +40,11 @@ CI runs automatically on every pull request: secret scanning (gitleaks),
 an `.env`-leak guard, and the full test suite (unit tests + BDD scenarios).
 All of that must pass before a PR can be merged.
 
-One step does **not** run on pull requests: the SonarQube quality-gate
-check. That step needs credentials for this project's private,
-self-hosted SonarQube instance, and a fork's PR pipeline must never be
-handed those credentials — so it only runs on pushes to `main`, after a PR
-has already been merged. If you want a SonarQube-equivalent read before
-that point, run `ruff`-style static analysis locally, or just ask in the
-PR — the maintainer runs this check locally before merging anything
-non-trivial.
+One step does **not** run on pull requests: the SonarQube quality-gate check.
+
+That step needs credentials for this project's private, self-hosted SonarQube instance, and a fork's PR pipeline must never be handed those credentials — so it only runs on pushes to `main`, after a PR has already been merged.
+
+If you want a SonarQube-equivalent read before that point, run `ruff`-style static analysis locally, or just ask in the PR — the maintainer runs this check locally before merging anything non-trivial.
 
 ## Code style
 
