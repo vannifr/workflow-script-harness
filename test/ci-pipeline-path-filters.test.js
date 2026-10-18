@@ -8,7 +8,7 @@ const path = require('node:path');
 const pipeline = fs.readFileSync(path.join(__dirname, '..', '.woodpecker.yml'), 'utf8');
 
 const FILTERED = ['sonarqube'];
-const NEVER_FILTERED = ['gitleaks', 'env-guard', 'backlog-check', 'docs-check', 'vuln-scan', 'sbom', 'test'];
+const NEVER_FILTERED = ['gitleaks', 'env-guard', 'nl-check', 'backlog-check', 'docs-check', 'vuln-scan', 'sbom', 'test'];
 const KEYS = ['image', 'commands', 'when', 'depends_on', 'environment'];
 const FORBIDDEN = /\b(failure|evaluate|detach|skip_clone|runs_on|status|privileged|cron)\s*:/;
 const PUSH_MAIN = ['- event: push', 'branch: main'];
@@ -17,6 +17,7 @@ const DOCS_FILTER = ['path:', "exclude: ['**/*.md', 'docs/**']"];
 const WHEN = {
   gitleaks: PUSH_MAIN_PR,
   'env-guard': PUSH_MAIN_PR,
+  'nl-check': PUSH_MAIN_PR,
   test: PUSH_MAIN_PR,
   'backlog-check': PUSH_MAIN,
   'docs-check': PUSH_MAIN,
@@ -27,6 +28,7 @@ const WHEN = {
 const DEPENDS = {
   gitleaks: null,
   'env-guard': null,
+  'nl-check': null,
   'backlog-check': null,
   'docs-check': null,
   test: null,
