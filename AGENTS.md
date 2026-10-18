@@ -73,3 +73,6 @@ the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 - End a task with the lessons learned and an approval report, as the global rules describe.
 - Other Claude sessions can work on this machine: check `ListAgents` before editing a repo another session changes.
 - Repository conventions are checked by `scripts/docs-check/check_repo_docs.py` (AGENTS.md, CLAUDE.md, README.md); keep `AGENTS.md` under 200 lines and put long procedures in a document or skill.
+
+## Learned rules
+- In Cucumber step definitions escape literal ( ) as \( \) and / as \/ (unescaped () is a parse error, (text) becomes optional); tags go on their own line; steps are global across files. Verify generated features with cucumber-js --dry-run.
