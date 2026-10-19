@@ -1,5 +1,5 @@
 #!/bin/sh
 f="$1"
 hit=$(grep -v '^#' "$f" | grep -n -i -E '^[[:space:]]*(co-authored-by:|[^[:alnum:]]*generated with)') || exit 0
-printf 'commit geweigerd: attributieregel in commitbericht (Co-Authored-By: / Generated with):\n%s\n' "$hit" >&2
+printf 'commit rejected: attribution line in commit message (Co-Authored-By: / Generated with):\n%s\n' "$hit" >&2
 exit 1

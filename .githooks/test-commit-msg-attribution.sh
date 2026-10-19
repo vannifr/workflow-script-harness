@@ -22,8 +22,8 @@ expect() {
   if git commit -q -m "$msg" >/dev/null 2>&1; then got=pass; else got=reject; fi
   if [ "$got" = "$want" ]; then echo "ok   $want: $(printf %s "$msg" | tail -n 1)"; else echo "FAIL want=$want got=$got: $msg"; fail=1; fi
 }
-expect pass "feat: schone commit"
-expect pass "fix: tekst over co-authored-by in lopende zin"
+expect pass "feat: clean commit"
+expect pass "fix: co-authored-by mentioned mid-sentence"
 expect reject "feat: x
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
@@ -41,5 +41,5 @@ expect reject "feat: x
 🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 expect pass "docs: ok
 
-Gedaan met zorg"
+Done with care"
 exit $fail
