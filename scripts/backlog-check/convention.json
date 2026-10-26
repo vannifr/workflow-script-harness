@@ -62,6 +62,34 @@
     "triage",
     "dormant",
     "uitgesloten",
+    "lab",
     "worktree"
-  ]
+  ],
+  "customer_label": "klant",
+  "goal_values": {
+    "spreken": 0,
+    "consulting": 0,
+    "teaching": 0,
+    "enabler": 1,
+    "experiment": 2,
+    "prive": 3
+  },
+  "kind_values": [
+    "productie",
+    "tool",
+    "platform",
+    "prive",
+    "experiment",
+    "extern",
+    "product",
+    "content",
+    "onbekend"
+  ],
+  "now_repos_max": 3,
+  "commitment_register": "",
+  "commitment_open_prefix": "bevestigd",
+  "commitment_done_word": "afgerond",
+  "commitment_status_column": "status",
+  "commitment_link_column": "vervolg",
+  "commitment_who_column": "wie"
 }

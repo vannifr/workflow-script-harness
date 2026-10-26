@@ -1,14 +1,17 @@
 import json
 import re
+from datetime import date
 from pathlib import Path
 
 DEFAULTS_FILE = Path(__file__).resolve().parent.parent / "convention.json"
 OVERRIDE_NAME = "backlog-convention.json"
+INSTANCE_KEYS = ("commitment_register",)
 NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 FOLDED = (">-", ">", "|", "|-")
 
 DONE_STATUSES = ("done",)
 BLOCKED_STATUSES = ("blocked",)
+PARKED_STATUSES = ("parked", "on hold")
 
 
 def read(path):
@@ -30,7 +33,7 @@ def load_config(instance=None):
         override = Path(instance) / OVERRIDE_NAME
         if override.is_file():
             data = json.loads(read(override))
-            overridden = sorted(k for k in data if config.get(k) != data[k])
+            overridden = sorted(k for k in data if k not in INSTANCE_KEYS and config.get(k) != data[k])
             config.update(data)
     config["_overridden"] = overridden
     return config
@@ -63,6 +66,9 @@ def read_inventory(instance):
         if len(parts) < 3 or not parts[2]:
             problems.append("inventory.txt:%d: format is '<repo> | <status> | <reason>'" % number)
             continue
+        if len(parts) > 6:
+            problems.append("inventory.txt:%d: too many columns (format '<repo> | <status> | <reason> | <goal> | <kind> | <herzien op>'; a reason must not contain '|')" % number)
+            continue
         if not NAME_RE.match(parts[0]):
             problems.append("inventory.txt:%d: invalid repo name '%s'" % (number, parts[0]))
             continue
@@ -71,6 +77,137 @@ def read_inventory(instance):
             continue
         entries[parts[0]] = (parts[1], parts[2])
     return entries, problems
+
+
+def read_inventory_goals(instance):
+    goals = {}
+    path = Path(instance) / "inventory.txt"
+    if not path.is_file():
+        return goals
+    for raw in read(path).splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if 3 < len(parts) <= 6 and parts[2] and parts[3] and NAME_RE.match(parts[0]):
+            goals.setdefault(parts[0], parts[3])
+    return goals
+
+
+def read_inventory_review_dates(instance):
+    dates = {}
+    path = Path(instance) / "inventory.txt"
+    if not path.is_file():
+        return dates
+    for raw in read(path).splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) == 6 and NAME_RE.match(parts[0]):
+            dates.setdefault(parts[0], parts[5])
+    return dates
+
+
+def read_inventory_kinds(instance):
+    kinds = {}
+    path = Path(instance) / "inventory.txt"
+    if not path.is_file():
+        return kinds
+    for raw in read(path).splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) in (5, 6) and parts[2] and parts[4] and NAME_RE.match(parts[0]):
+            kinds.setdefault(parts[0], parts[4])
+    return kinds
+
+
+GOAL_ID_RE = re.compile(r"^D[1-9]\d*$")
+GOAL_HORIZONS = ("H1", "H2", "H3")
+GOAL_REPO_RE = re.compile(r"^[A-Za-z0-9._-]+\+?$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def read_goals(instance):
+    objectives = []
+    problems = []
+    path = Path(instance) / "goals.txt"
+    if not path.is_file():
+        return objectives, problems
+    seen = set()
+    for number, raw in enumerate(read(path).splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) != 5:
+            problems.append("goals.txt:%d: expected 5 columns '<id> | <title> | <H1|H2|H3> | <decision date> | <repos>', found %d" % (number, len(parts)))
+            continue
+        gid, title, horizon, decision, repos = parts
+        if not GOAL_ID_RE.match(gid):
+            problems.append("goals.txt:%d: invalid id '%s' (use D<number>)" % (number, gid))
+            continue
+        if gid in seen:
+            problems.append("goals.txt:%d: '%s' is listed twice" % (number, gid))
+            continue
+        seen.add(gid)
+        if not title:
+            problems.append("goals.txt:%d: %s has no title" % (number, gid))
+        if not horizon:
+            problems.append("goals.txt:%d: %s has no horizon (use H1, H2 or H3)" % (number, gid))
+        elif horizon not in GOAL_HORIZONS:
+            problems.append("goals.txt:%d: invalid horizon '%s' (use H1, H2 or H3)" % (number, horizon))
+            horizon = ""
+        if not decision:
+            problems.append("goals.txt:%d: %s has no decision date (use YYYY-MM-DD)" % (number, gid))
+        else:
+            try:
+                if not DATE_RE.match(decision):
+                    raise ValueError(decision)
+                date.fromisoformat(decision)
+            except ValueError:
+                problems.append("goals.txt:%d: invalid decision date '%s' (use YYYY-MM-DD)" % (number, decision))
+                decision = ""
+        tokens = [t.strip() for t in repos.split(",") if t.strip()]
+        if not tokens:
+            problems.append("goals.txt:%d: %s lists no repos" % (number, gid))
+        primary = []
+        secondary = []
+        for token in tokens:
+            if not GOAL_REPO_RE.match(token):
+                problems.append("goals.txt:%d: invalid repo '%s' (use <repo> or <repo>+)" % (number, token))
+                continue
+            repo = token.rstrip("+")
+            if repo in primary or repo in secondary:
+                problems.append("goals.txt:%d: '%s' is listed twice in %s" % (number, repo, gid))
+                continue
+            (primary if token.endswith("+") else secondary).append(repo)
+        objectives.append({"id": gid, "title": title, "horizon": horizon, "decision": decision, "primary": primary, "secondary": secondary, "line": number})
+    return objectives, problems
+
+
+def read_milestones(instance):
+    found = {}
+    folder = Path(instance) / "backlog" / "milestones"
+    if not folder.is_dir():
+        return found
+    for path in sorted(folder.glob("*.md")):
+        match = re.match(r"^---\n(.*?)\n---", read(path), re.S)
+        if not match:
+            continue
+        fields = dict(
+            (m.group(1), _scalar(m.group(2)))
+            for m in (re.match(r"^([a-z_]+):\s*(.*)$", line) for line in match.group(1).splitlines()) if m)
+        if fields.get("id") and fields.get("title"):
+            found[fields["id"]] = fields["title"]
+    return found
+
+
+def task_objective(task, milestones):
+    title = milestones.get(task.get("milestone", ""), "")
+    return title if GOAL_ID_RE.match(title) else None
 
 
 def parse_task(path):
@@ -135,3 +272,7 @@ def is_done(task):
 
 def is_blocked_status(task):
     return task.get("status", "").lower() in BLOCKED_STATUSES
+
+
+def is_parked(task):
+    return task.get("status", "").lower() in PARKED_STATUSES

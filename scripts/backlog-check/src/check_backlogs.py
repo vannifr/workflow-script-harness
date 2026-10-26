@@ -11,7 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import tasks as tk  # noqa: E402
 
 ITEM_START = re.compile(r"^- \[(.)\] ")
-ITEM = re.compile(r"^- \[ \] \*\*(.+?)\*\* \(([^)]*)\) — ")
+ITEM = re.compile(r"^- \[ \] \*\*(.+?)\*\* \(([^)]*)\)(?: — |$)")
+DETAIL = re.compile(r"^\s+- (Probleem|Meerwaarde|Oplossing):\s*\S")
+DETAIL_KEYS = ("Probleem", "Meerwaarde", "Oplossing")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])(,\s.*)?$")
 TASK_LINK = re.compile(r"^TASK-(\d+)$")
@@ -53,6 +55,10 @@ def parse_meta(meta, config):
                 deadline = value
             elif not MONTH.match(value):
                 errors.append("deadline must be YYYY-MM-DD (or YYYY-MM): '%s'" % value)
+        elif part.startswith("parked:"):
+            value = part[len("parked:"):].strip()
+            if not (DATE.match(value) and valid_date(value)):
+                errors.append("parked must be YYYY-MM-DD: '%s'" % value)
         elif part.startswith("context:"):
             has_context = True
             value = part[len("context:"):].strip()
@@ -115,7 +121,17 @@ def check_file(name, path, config):
             continue
         meta_errors, deadline, task_id = parse_meta(match.group(2), config)
         errors.extend("%s: %s" % (where, e) for e in meta_errors)
-        items.append({"title": match.group(1), "section": section, "deadline": deadline, "task": task_id, "where": where})
+        parked = bool(re.search(r"(^| · )parked:", match.group(2)))
+        if parked and section != config.get("parked_section", "Later"):
+            errors.append("%s: a parked item belongs in %s, not %s" % (where, config.get("parked_section", "Later"), section))
+        detail = []
+        for follow in lines[number:]:
+            if not follow.startswith((" ", "\t")):
+                break
+            found = DETAIL.match(follow)
+            if found:
+                detail.append(found.group(1))
+        items.append({"detail": detail, "title": match.group(1), "section": section, "deadline": deadline, "task": task_id, "where": where, "parked": parked, "trigger": bool(re.search(r"(^| · )trigger:\s*[^\s·]", match.group(2)))})
         if deadline:
             deadlines.append((deadline, match.group(1)))
     if config.get("require_all_sections"):
@@ -178,7 +194,7 @@ def check_task_refs(instance, projects):
         for ref in task["references"]:
             if "://" in ref:
                 continue
-            if not ((Path(projects) / ref).exists() or (Path(instance) / ref).exists()):
+            if not any((base / ref).exists() for base in (Path(projects), Path(projects).parent / "lab", Path(instance))):
                 warnings.append("%s: reference '%s' does not exist" % (task["id"], ref))
     return warnings
 
@@ -241,6 +257,10 @@ def check_links(name, items, tasks_by_id, config, seen_links):
         if tk.is_done(task):
             warnings.append("%s: %s is Done but the item is still listed ('%s'); remove it" % (where, item["task"], item["title"]))
             continue
+        if tk.is_parked(task) and not item.get("parked"):
+            warnings.append("%s: %s is Parked but the item has no 'parked: YYYY-MM-DD' flag in Later" % (where, item["task"]))
+        if item.get("parked") and not tk.is_parked(task):
+            warnings.append("%s: item is parked but %s has status %s" % (where, item["task"], task.get("status", "?")))
         if tk.is_blocked_status(task) and item["section"] != blocked_section:
             warnings.append("%s: %s is Blocked but the item is in %s, not %s" % (where, item["task"], item["section"], blocked_section))
         if item["section"] == blocked_section and not tk.is_blocked_status(task):
@@ -302,7 +322,7 @@ def check_tasks(task_list, statuses=None, projects=None):
     return errors
 
 
-def check_inventory(instance, names, config, projects=None):
+def check_inventory(instance, names, config, projects=None, today=None):
     errors = []
     warnings = []
     path = Path(instance) / "inventory.txt"
@@ -319,14 +339,144 @@ def check_inventory(instance, names, config, projects=None):
             errors.append("inventory.txt: '%s' is in repos.txt but not in the inventory" % repo)
         elif entries[repo][0] != "adopterend":
             errors.append("inventory.txt: '%s' is in repos.txt but its status is '%s', not 'adopterend'" % (repo, entries[repo][0]))
+    goals = tk.read_inventory_goals(instance)
+    allowed_goals = config.get("goal_values", {})
+    for repo, goal in goals.items():
+        if allowed_goals and goal not in allowed_goals:
+            errors.append("inventory.txt: '%s' has unknown goal '%s' (allowed: %s)" % (repo, goal, ", ".join(allowed_goals)))
+    if allowed_goals and goals:
+        for repo, (status, _) in entries.items():
+            if status == "adopterend" and repo not in goals:
+                warnings.append("inventory.txt: '%s' is adopterend but has no goal (fourth column: %s)" % (repo, ", ".join(allowed_goals)))
     for repo, (status, _) in entries.items():
         if status == "adopterend" and repo not in names:
             errors.append("inventory.txt: '%s' is 'adopterend' but not in repos.txt" % repo)
+    kinds = tk.read_inventory_kinds(instance)
+    allowed_kinds = config.get("kind_values", [])
+    for repo, kind in kinds.items():
+        if allowed_kinds and kind not in allowed_kinds:
+            errors.append("inventory.txt: '%s' has unknown kind '%s' (allowed: %s)" % (repo, kind, ", ".join(allowed_kinds)))
+    if allowed_kinds and kinds:
+        for repo, (status, _) in entries.items():
+            if status in ("adopterend", "lab") and repo not in kinds:
+                warnings.append("inventory.txt: '%s' is %s but has no kind (fifth column: %s)" % (repo, status, ", ".join(allowed_kinds)))
+    today = today or date.today()
+    reviews = tk.read_inventory_review_dates(instance)
+    for repo, (status, _) in entries.items():
+        if status == "dormant" and not reviews.get(repo):
+            errors.append("inventory.txt: '%s' is dormant but has no 'herzien op' date (sixth column, YYYY-MM-DD)" % repo)
+    for repo, value in reviews.items():
+        try:
+            due = date.fromisoformat(value)
+        except ValueError:
+            errors.append("inventory.txt: '%s' has an invalid 'herzien op' date '%s' (YYYY-MM-DD)" % (repo, value))
+            continue
+        if due < today:
+            errors.append("inventory.txt: '%s' 'herzien op' date %s has passed; decide keep, reactivate or drop" % (repo, value))
     if projects is not None and Path(projects).is_dir():
         for entry in sorted(Path(projects).iterdir()):
             if (entry / ".git").exists() and entry.name not in entries:
                 warnings.append("inventory.txt: git repo '%s' in the projects directory is not classified" % entry.name)
     return errors, warnings
+
+
+def check_goals(instance, config, today=None):
+    errors = []
+    warnings = []
+    if not (Path(instance) / "goals.txt").is_file():
+        return errors, warnings
+    today = today or date.today()
+    objectives, problems = tk.read_goals(instance)
+    errors.extend(problems)
+    entries, _ = tk.read_inventory(instance)
+    known = set(entries) if entries else set(tk.read_registry(instance)[0])
+    classes = tk.read_inventory_goals(instance)
+    for obj in objectives:
+        for repo in obj["primary"] + obj["secondary"]:
+            if repo not in known:
+                errors.append("goals.txt:%d: %s lists unknown repo '%s'" % (obj["line"], obj["id"], repo))
+            elif classes.get(repo) == "prive":
+                warnings.append("goals.txt: %s lists '%s', whose goal is prive" % (obj["id"], repo))
+        if not obj["primary"]:
+            warnings.append("goals.txt: %s has no primary repo (mark one with '+')" % obj["id"])
+        if obj["decision"] and valid_date(obj["decision"]) and date.fromisoformat(obj["decision"]) < today:
+            warnings.append("goals.txt: %s has its decision date %s in the past" % (obj["id"], obj["decision"]))
+    milestones = tk.read_milestones(instance)
+    ids = set(o["id"] for o in objectives)
+    for task in tk.load_tasks(instance):
+        goal = tk.task_objective(task, milestones)
+        if goal and goal not in ids and not tk.is_done(task):
+            warnings.append("%s is in milestone %s, which is not in goals.txt" % (task["id"], goal))
+    return errors, warnings
+
+
+def split_row(line):
+    cells = re.split(r"(?<!\\)\|", line.strip())
+    if cells and cells[0].strip() == "":
+        cells = cells[1:]
+    if cells and cells[-1].strip() == "":
+        cells = cells[:-1]
+    return [c.strip().replace("\\|", "|") for c in cells]
+
+
+def check_commitments(instance, projects, config):
+    register = config.get("commitment_register") or ""
+    if not register:
+        return []
+    path = Path(projects) / register
+    if not path.is_file():
+        return ["commitment register %s not found" % register]
+    status_col = config.get("commitment_status_column", "status").strip().lower()
+    link_col = config.get("commitment_link_column", "vervolg").strip().lower()
+    who_col = config.get("commitment_who_column", "wie").strip().lower()
+    open_prefix = config.get("commitment_open_prefix", "bevestigd").lower()
+    done_word = config.get("commitment_done_word", "afgerond")
+    tasks_by_id = {}
+    for t in tk.load_tasks(instance):
+        m = re.match(r"^TASK-0*(\d+)$", t["id"].upper())
+        if m:
+            tasks_by_id["TASK-" + m.group(1)] = t
+    warnings = []
+    header = None
+    for number, raw in enumerate(tk.read(path).splitlines(), 1):
+        line = raw.strip()
+        if not line.startswith("|") or not re.search(r"[A-Za-z0-9]", line):
+            continue
+        cells = split_row(line)
+        if header is None:
+            names = [c.lower() for c in cells]
+            if status_col in names and link_col in names:
+                header = {n: i for i, n in enumerate(names)}
+            continue
+        if len(cells) != len(header):
+            warnings.append("%s:%d: row has %d columns, the header has %d (an unescaped '|' in a cell, or another table?)" % (register, number, len(cells), len(header)))
+            continue
+        status_text = cells[header[status_col]]
+        status = re.sub(r"[*_`]", "", status_text).strip().lower()
+        if not status.startswith(open_prefix):
+            continue
+        who = (cells[header[who_col]] if who_col in header else cells[0]) or "?"
+        label = "%s:%d (%s)" % (register, number, who[:40])
+        ids = ["TASK-" + n for n in re.findall(r"TASK-0*(\d+)(?![A-Za-z0-9]|\.\d)", cells[header[link_col]].upper())]
+        if not ids:
+            warnings.append("%s is %s but names no TASK-<n> in '%s'" % (label, status_text, link_col))
+            continue
+        for tid in ids:
+            task = tasks_by_id.get(tid)
+            if task is None:
+                warnings.append("%s refers to %s, which does not exist" % (label, tid))
+            elif tk.is_done(task):
+                warnings.append("%s: %s is Done but the request is still %s; mark it %s" % (label, tid, status_text, done_word))
+    if header is None:
+        warnings.append("%s: no header row with the columns '%s' and '%s'" % (register, status_col, link_col))
+    return warnings
+
+
+def check_now_cap(items_by_repo, limit, now_section="Nu"):
+    active = sorted(name for name, items in items_by_repo.items() if any(i["section"] == now_section for i in items))
+    if limit and len(active) > limit:
+        return ["%d repos have items in %s (cap %d): %s" % (len(active), now_section, limit, ", ".join(active))]
+    return []
 
 
 def check_instance_only(instance):
@@ -348,6 +498,9 @@ def check_instance_only(instance):
     errors.extend("repos.txt: invalid repo name '%s'" % n for n in invalid)
     inv_errors, _ = check_inventory(instance, names, tk.load_config(instance))
     errors.extend(inv_errors)
+    goal_errors, goal_warnings = check_goals(instance, tk.load_config(instance))
+    errors.extend(goal_errors)
+    warnings.extend(goal_warnings)
     for name in names:
         if projects and name not in projects:
             warnings.append("repos.txt: '%s' is not in backlog/config.yml projects" % name)
@@ -413,6 +566,9 @@ def check_instance(instance, projects, today=None):
     inv_errors, inv_warnings = check_inventory(instance, names, config, projects)
     errors.extend(inv_errors)
     warnings.extend(inv_warnings)
+    goal_errors, goal_warnings = check_goals(instance, config, today)
+    errors.extend(goal_errors)
+    warnings.extend(goal_warnings)
     task_list = tk.load_tasks(instance)
     errors.extend(check_tasks(task_list))
     tasks_by_id = {t["id"].upper(): t for t in task_list}
@@ -424,11 +580,16 @@ def check_instance(instance, projects, today=None):
             errors.append("%s: BACKLOG.md is missing in %s" % (name, projects / name))
             continue
         file_errors, _, items = check_file(name, path, config)
+        for item in items:
+            missing = [k for k in DETAIL_KEYS if k not in item["detail"]]
+            if missing:
+                warnings.append("%s: '%s' lacks sub-bullets %s" % (item["where"], item["title"], ", ".join(missing)))
         errors.extend(file_errors)
         link_errors, link_warnings = check_links(name, items, tasks_by_id, config, seen_links)
         errors.extend(link_errors)
         warnings.extend(link_warnings)
         collected.append((name, items))
+        warnings.extend("%s: parked item has no 'trigger:' (say when to pick it up)" % i["where"] for i in items if i["parked"] and not i["trigger"])
         warnings.extend(check_source_refs(name, path, projects / name, projects))
         warnings.extend(check_staleness(name, path, today, config.get("stale_days", 30)))
         agents_errors, agents_warnings = split_agents(check_agents(name, projects / name, config), config)
@@ -436,6 +597,8 @@ def check_instance(instance, projects, today=None):
         warnings.extend(agents_warnings)
         for legacy in legacy_backlog_files(projects / name):
             warnings.append("%s: legacy backlog file %s is still present; merge it into BACKLOG.md and remove it" % (name, legacy.relative_to(projects / name)))
+    warnings.extend(check_commitments(instance, projects, config))
+    warnings.extend(check_now_cap(dict(collected), config.get("now_repos_max", 0), config["now_section"]))
     remaining = Counter()
     for task in task_list:
         due = task.get("due_date") or ""
