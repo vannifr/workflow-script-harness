@@ -65,7 +65,7 @@ the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 ## Agent working rules
 
 - The global working rules (session goal, mandate, learning loop, open-question format, cross-session communication) live in `~/.claude/CLAUDE.md` and the `goal` skill; do not copy them into this file.
-- Formulate a goal with criteria that a command can check before substantial work; stop and write an open decision for a user-owned decision or a high-impact assumption without evidence.
+- Formulate a goal with criteria that a command can check before substantial work; park a user-owned decision or a high-impact assumption without evidence under `Needs user` and continue with the next step.
 - Other Claude sessions can work on this machine: check `ListAgents` before editing a repo another session changes.
 - Repository conventions are checked by `scripts/docs-check/check_repo_docs.py` (AGENTS.md, CLAUDE.md, README.md); keep `AGENTS.md` under 200 lines and put long procedures in a document or skill.
 
