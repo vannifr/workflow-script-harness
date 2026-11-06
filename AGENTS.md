@@ -4,13 +4,13 @@ This project follows the Intent Integrity Kit (IIKit) spec-driven workflow.
 Governance lives in `CONSTITUTION.md`, project context in `PREMISE.md`, and
 the active feature spec in `specs/001-workflow-script-harness/spec.md`.
 
-## Profiel
+## Profiel (profile)
 
-- Profiel: beheer (testharnas, Node.js)
-- Tier C: de sandbox-fideliteit van de mock-runtime en de hash-locked `.feature`-bestanden: nooit direct wijzigen
-- Deploy: geen
-- Gevoeligheid: geen secrets; geen echte workflow-scripts met klantdata
-- Check: `npm test`; CI `.woodpecker.yml` (vuln-scan, sonarqube, backlog-check)
+- Profile: beheer (test harness, Node.js; public repository)
+- Tier C: sandbox fidelity of the mock runtime and the hash-locked `.feature` files: never edit them directly
+- Deploy: none
+- Sensitivity: public repository, English only; no secrets; no customer data in workflow scripts
+- Check: `npm test`; CI `.woodpecker.yml` (vuln-scan, sonarqube, nl-check, backlog-check)
 
 ## Non-negotiable constraints (from CONSTITUTION.md)
 
